@@ -123,7 +123,7 @@ button { background:#22c55e; color:white; cursor:pointer; }
 
   <h2>Total <span id="total">KD 0</span></h2>
 
-<button onclick="printBill()">Print</button> <button onclick="sendWA()">WhatsApp</button> <button onclick="closeBill()">Close</button>
+<button onclick="printBill()">Print</button> <button onclick="downloadPDF()">Download PDF</button> <button onclick="sendWA()">WhatsApp</button> <button onclick="closeBill()">Close</button>
 
 </div>
 
@@ -165,6 +165,8 @@ button { background:#22c55e; color:white; cursor:pointer; }
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <script>
 firebase.initializeApp({
@@ -431,12 +433,10 @@ function calculate(){
  total.innerText="KD "+Math.round(t+taxVal-dis);
 }
 
-function printBill(){
-
+function fillPrintData(){
  pShopName.innerText = shopName.innerText;
  pShopPhone.innerText = shopPhone.innerText;
  pShopAddress.innerText = shopAddress.innerText;
-
  pClient.innerText = "Client: " + currentClient.name;
 
  let html="";
@@ -463,12 +463,29 @@ function printBill(){
  pTax.innerText = "Tax: KD " + taxVal.toFixed(2);
  pDiscount.innerText = "Discount: KD " + dis;
  pTotal.innerText = "KD " + grand;
+}
 
+function printBill(){
+ fillPrintData();
  let original = document.body.innerHTML;
  document.body.innerHTML = printArea.innerHTML;
  window.print();
  document.body.innerHTML = original;
  location.reload();
+}
+
+function downloadPDF(){
+ fillPrintData();
+
+ let opt = {
+    margin: 5,
+    filename: currentClient.name + "_bill.pdf",
+    image: { type: 'jpeg', quality: 1 },
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  };
+
+ html2pdf().set(opt).from(printArea).save();
 }
 
 function sendWA(){
