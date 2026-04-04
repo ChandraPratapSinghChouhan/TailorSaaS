@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Tailor SaaS Final</title>
+<title>Tailor SaaS ULTRA PRO</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -10,35 +10,90 @@ body { font-family: Arial; background:#0f172a; color:white; margin:0; }
 .container { padding:15px; text-align:center; }
 input, button { padding:10px; margin:5px; border-radius:6px; border:none; }
 button { background:#22c55e; color:white; cursor:pointer; }
+.searchBox { width:95%; padding:12px; font-size:16px; }
 .table { width:100%; border-collapse: collapse; }
 .table th, .table td { padding:8px; border-bottom:1px solid #444; }
-#adminPanel, #clientPanel { display:none; }
+#adminPanel,#clientPanel,#billPanel,#measurePanel { display:none; }
+.big { font-size:22px; font-weight:bold; }
 </style>
 </head>
 
 <body>
 <div class="container">
 
+<!-- LOGIN -->
 <div id="loginPanel">
 <h2>Admin Login</h2>
 <input id="pass" placeholder="Password">
 <button onclick="login()">Login</button>
 </div>
 
+<!-- ADMIN -->
 <div id="adminPanel">
 <h2>Admin Dashboard</h2>
+
 <input id="shopId" placeholder="Shop ID">
 <input id="shopName" placeholder="Shop Name">
+<input id="shopColor" type="color">
 <button onclick="saveShop()">Save Shop</button>
+
 <div id="shops"></div>
 </div>
 
+<!-- CLIENT -->
 <div id="clientPanel">
 <h2 id="shopTitle"></h2>
+
+<input id="search" class="searchBox" placeholder="Search name/mobile">
+
+<br>
+
 <input id="name" placeholder="Client Name">
 <input id="mobile" placeholder="Mobile">
-<button onclick="addClient()">Add</button>
-<div id="list"></div>
+<input id="book" placeholder="Book No">
+
+<!-- Measurements -->
+<div id="measurePanel">
+<input id="m1" placeholder="Length">
+<input id="m2" placeholder="Chest">
+<input id="m3" placeholder="Waist">
+<input id="m4" placeholder="Hip">
+<input id="m5" placeholder="Shoulder">
+<input id="m6" placeholder="Sleeve">
+<input id="m7" placeholder="Neck">
+<input id="m8" placeholder="Thigh">
+<input id="m9" placeholder="Knee">
+<input id="m10" placeholder="Bottom">
+</div>
+
+<button onclick="toggleMeasure()">📏 Measurements</button>
+<button onclick="saveClient()">Save</button>
+<button onclick="deleteAll()">🗑 Clear All</button>
+
+<table class="table">
+<thead><tr><th>Name</th><th>Mobile</th><th>Book</th><th>Action</th></tr></thead>
+<tbody id="list"></tbody>
+</table>
+</div>
+
+<!-- BILL -->
+<div id="billPanel">
+<h2>Bill</h2>
+
+<input id="itemName" placeholder="Item">
+<input id="itemQty" type="number" placeholder="Qty">
+<input id="itemPrice" type="number" placeholder="Price">
+<button onclick="addItem()">Add Item</button>
+
+<br>
+
+<input id="tax" placeholder="Tax %">
+<input id="discount" placeholder="Discount">
+
+<h2 class="big">Total ₹<span id="total">0</span></h2>
+
+<button onclick="printBill()">🖨 Print</button>
+<button onclick="wa()">📲 WhatsApp</button>
 </div>
 
 </div>
@@ -47,8 +102,6 @@ button { background:#22c55e; color:white; cursor:pointer; }
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 
 <script>
-
-// ✅ CORRECT Firebase init (fixed)
 firebase.initializeApp({
   apiKey: "AIzaSyAr3IEvh2rCzmqDVmRqkyb40u79880x1sE",
   authDomain: "tailorsaas-9f51c.firebaseapp.com",
@@ -64,59 +117,150 @@ const db = firebase.database();
 let adminPass = localStorage.getItem("pass") || "admin123";
 
 function login(){
-  if(pass.value === adminPass){
-    loginPanel.style.display="none";
-    adminPanel.style.display="block";
-    loadShops();
-  } else alert("Wrong password");
+ if(pass.value===adminPass){
+  loginPanel.style.display="none";
+  adminPanel.style.display="block";
+  loadShops();
+ } else alert("Wrong password");
 }
 
 function saveShop(){
-  let id = shopId.value;
-  let name = shopName.value;
-  if(!id || !name) return alert("Enter data");
-
-  db.ref("shops/"+id+"/info").set({name});
+ let id=shopId.value,name=shopName.value,color=shopColor.value;
+ if(!id||!name) return alert("Enter data");
+ db.ref("shops/"+id+"/info").set({name,color});
 }
 
 function loadShops(){
-  db.ref("shops").on("value", s=>{
-    let v=s.val()||{}, html="";
-    for(let k in v){
-      html+=`<div>${k} - ${v[k].info?.name||""}
-      <button onclick="openShop('${k}')">Open</button></div>`;
-    }
-    shops.innerHTML=html;
-  });
+ db.ref("shops").on("value",s=>{
+  let v=s.val()||{},html="";
+  for(let k in v){
+    html+=`<div style="background:${v[k].info?.color||"#333"};padding:5px;margin:5px">
+    ${k} - ${v[k].info?.name||""}
+    <button onclick="openShop('${k}')">Open</button>
+    <button onclick="deleteShop('${k}')">🗑</button>
+    </div>`;
+  }
+  shops.innerHTML=html;
+ });
 }
 
-function openShop(id){
-  window.location="?shop="+id;
-}
+function openShop(id){ location="?shop="+id; }
 
-let currentShop = new URLSearchParams(location.search).get("shop");
+function deleteShop(id){ db.ref("shops/"+id).remove(); }
+
+let currentShop=new URLSearchParams(location.search).get("shop");
+let data=[], editIndex=null;
 
 if(currentShop){
-  loginPanel.style.display="none";
-  clientPanel.style.display="block";
-  shopTitle.innerText="Shop: "+currentShop;
+ loginPanel.style.display="none";
+ clientPanel.style.display="block";
 
-  db.ref("shops/"+currentShop+"/clients").on("value", s=>{
-    let v=s.val()||{}, html="";
-    for(let k in v){
-      html+=`<div>${v[k].name} - ${v[k].mobile}</div>`;
-    }
-    list.innerHTML=html;
-  });
+ db.ref("shops/"+currentShop+"/info").once("value",s=>{
+  let i=s.val();
+  shopTitle.innerText=i?.name||currentShop;
+  document.body.style.background=i?.color||"#0f172a";
+ });
+
+ db.ref("shops/"+currentShop+"/clients").on("value",s=>{
+  data=[];
+  let v=s.val()||{};
+  for(let k in v){data.push({...v[k],key:k});}
+  render(data);
+ });
 }
 
-function addClient(){
-  let n=name.value, m=mobile.value;
-  if(!n || !m) return alert("Enter data");
-
-  db.ref("shops/"+currentShop+"/clients").push({name:n,mobile:m});
+function toggleMeasure(){
+ measurePanel.style.display = measurePanel.style.display==="none"?"block":"none";
 }
 
+function saveClient(){
+ let obj={
+  name:name.value,
+  mobile:mobile.value,
+  book:book.value,
+  m1:m1.value,m2:m2.value,m3:m3.value,m4:m4.value,m5:m5.value,
+  m6:m6.value,m7:m7.value,m8:m8.value,m9:m9.value,m10:m10.value
+ };
+
+ if(editIndex!==null){
+  db.ref("shops/"+currentShop+"/clients/"+data[editIndex].key).set(obj);
+  editIndex=null;
+ } else {
+  db.ref("shops/"+currentShop+"/clients").push(obj);
+ }
+}
+
+function render(arr){
+ let html="";
+ arr.forEach((d,i)=>{
+  html+=`<tr>
+  <td>${d.name}</td>
+  <td>${d.mobile}</td>
+  <td>${d.book}</td>
+  <td>
+    <button onclick="editClient(${i})">✏️</button>
+    <button onclick="deleteClient('${d.key}')">🗑</button>
+    <button onclick="openBill()">🧾</button>
+  </td>
+  </tr>`;
+ });
+ list.innerHTML=html;
+}
+
+function editClient(i){
+ let d=data[i];
+ name.value=d.name;
+ mobile.value=d.mobile;
+ book.value=d.book;
+ m1.value=d.m1||"";m2.value=d.m2||"";m3.value=d.m3||"";
+ editIndex=i;
+}
+
+function deleteClient(k){
+ db.ref("shops/"+currentShop+"/clients/"+k).remove();
+}
+
+function deleteAll(){
+ if(confirm("Delete all?")){
+  db.ref("shops/"+currentShop+"/clients").remove();
+ }
+}
+
+search.oninput=function(){
+ let v=this.value.toLowerCase();
+ render(data.filter(d=>d.name.toLowerCase().includes(v)||d.mobile.includes(v)));
+}
+
+/* BILL */
+let items=[];
+
+function openBill(){
+ billPanel.style.display="block";
+ items=[];
+ total.innerText=0;
+}
+
+function addItem(){
+ let n=itemName.value,q=+itemQty.value,p=+itemPrice.value;
+ if(!n||!q||!p) return;
+ items.push({n,q,p});
+ calc();
+}
+
+function calc(){
+ let t=0;
+ items.forEach(i=>t+=i.q*i.p);
+ let taxVal=t*(tax.value||0)/100;
+ let dis=+discount.value||0;
+ total.innerText=Math.round(t+taxVal-dis);
+}
+
+function printBill(){ window.print(); }
+
+function wa(){
+ let msg="Total ₹"+total.innerText;
+ window.open("https://wa.me/?text="+encodeURIComponent(msg));
+}
 </script>
 
 </body>
