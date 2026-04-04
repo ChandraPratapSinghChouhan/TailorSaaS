@@ -25,6 +25,7 @@ button { background:#22c55e; color:white; cursor:pointer; }
 #adminPanel, #clientPanel { display:none; }
 #addForm { display:none; }
 #billPanel { display:none; background:#020617; padding:15px; margin-top:10px; }
+
 </style>
 
 </head>
@@ -60,7 +61,7 @@ button { background:#22c55e; color:white; cursor:pointer; }
 
   <table class="table">
     <thead>
-      <tr><th>ID</th><th>Name</th><th>Actions</th></tr>
+      <tr><th>ID</th><th>Name</th><th>Total Clients</th><th>Actions</th></tr>
     </thead>
     <tbody id="shopTable"></tbody>
   </table>
@@ -120,7 +121,7 @@ button { background:#22c55e; color:white; cursor:pointer; }
   <input id="tax" placeholder="Tax %">
   <input id="discount" placeholder="Discount">
 
-  <h2>Total ₹<span id="total">0</span></h2>
+  <h2>Total <span id="total">KD 0</span></h2>
 
 <button onclick="printBill()">Print</button> <button onclick="sendWA()">WhatsApp</button> <button onclick="closeBill()">Close</button>
 
@@ -155,7 +156,7 @@ button { background:#22c55e; color:white; cursor:pointer; }
 <div id="pTax"></div>
 <div id="pDiscount"></div>
 
-<h2 style="text-align:right;font-size:26px">Grand Total: KD <span id="pTotal"></span></h2>
+<h2 style="text-align:right;font-size:26px">Grand Total: <span id="pTotal"></span></h2>
 
 </div>
 
@@ -166,7 +167,7 @@ button { background:#22c55e; color:white; cursor:pointer; }
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 
 <script>
-  firebase.initializeApp({
+firebase.initializeApp({
   apiKey: "AIzaSyAr3IEvh2rCzmqDVmRqkyb40u79880x1sE",
   authDomain: "tailorsaas-9f51c.firebaseapp.com",
   databaseURL: "https://tailorsaas-9f51c-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -175,6 +176,7 @@ button { background:#22c55e; color:white; cursor:pointer; }
   messagingSenderId: "827905458969",
   appId: "1:827905458969:web:d8723cefbf9798e52f3b88"
 });
+
 const db=firebase.database();
 
 let currentShop="",localKey="",data=[],editIndex=null;
@@ -182,241 +184,316 @@ let billItems=[],currentClient=null;
 
 let adminPass=localStorage.getItem("pass")||"admin123";
 
-function changePassword(){
-  if(!newPass.value) return;
-  localStorage.setItem("pass",newPass.value);
-  adminPass=newPass.value;
-  alert("Password updated");
+function login(){
+ if(pass.value===adminPass){
+  loginPanel.style.display="none";
+  adminPanel.style.display="block";
+  loadShops();
+ } else alert("Wrong password");
 }
 
-function login(){
-  if(pass.value===adminPass){
-    loginPanel.style.display="none";
-    adminPanel.style.display="block";
-    loadShops();
-  } else alert("Wrong password");
+function changePassword(){
+ if(!newPass.value) return;
+ localStorage.setItem("pass",newPass.value);
+ adminPass=newPass.value;
+ alert("Updated");
 }
 
 function saveShop(){
-  let id=shopId.value.trim();
-  let name=shopNameInput.value.trim();
-  if(!id||!name) return alert("Required");
+ let id=shopId.value.trim();
+ let name=shopNameInput.value.trim();
+ if(!id||!name) return alert("Required");
 
-  db.ref("shops/"+id+"/info").set({
-    name,
-    phone:shopPhoneInput.value,
-    address:shopAddressInput.value
-  });
+ db.ref("shops/"+id+"/info").set({
+  name,
+  phone:shopPhoneInput.value,
+  address:shopAddressInput.value
+ });
 }
 
 function loadShops(){
-  db.ref("shops").on("value",s=>{
-    let v=s.val(),html="";
-    for(let k in v){
-      let i=v[k].info||{};
-      html+=`<tr>
-      <td>${k}</td>
-      <td>${i.name||""}</td>
-      <td>
-        <button onclick="openShop('${k}')">🔗</button>
-      </td>
-      </tr>`;
-    }
-    shopTable.innerHTML=html;
-  });
+ db.ref("shops").on("value",s=>{
+  let v=s.val()||{},html="";
+  for(let k in v){
+    let i=v[k].info||{};
+    let count=v[k].clients?Object.keys(v[k].clients).length:0;
+
+    html+=`<tr>
+    <td>${k}</td>
+    <td>${i.name||""}</td>
+    <td>${count}</td>
+    <td>
+      <button onclick="openShop('${k}')">🔗</button>
+      <button onclick="editShop('${k}','${i.name}','${i.phone}','${i.address}')">✏️</button>
+      <button onclick="deleteShop('${k}')">🗑️</button>
+    </td>
+    </tr>`;
+  }
+  shopTable.innerHTML=html;
+ });
 }
 
 function openShop(id){
-  window.open(location.href.split("?")[0]+"?shop="+id,"_blank");
+ window.open(location.href.split("?")[0]+"?shop="+id,"_blank");
+}
+
+function editShop(id,n,p,a){
+ shopId.value=id;
+ shopNameInput.value=n;
+ shopPhoneInput.value=p;
+ shopAddressInput.value=a;
+}
+
+function deleteShop(id){
+ if(confirm("Delete?")) db.ref("shops/"+id).remove();
 }
 
 function loadClient(id){
-  currentShop=id;
-  localKey="shop_"+id;
+ currentShop=id;
+ localKey="shop_"+id;
 
-  loginPanel.style.display="none";
-  adminPanel.style.display="none";
-  clientPanel.style.display="block";
+ loginPanel.style.display="none";
+ adminPanel.style.display="none";
+ clientPanel.style.display="block";
 
-  loadLocal();
+ loadLocal();
 
-  db.ref("shops/"+id+"/info").once("value",s=>{
-    let i=s.val();
-    shopName.innerText=i?.name||id;
-    shopPhone.innerText="Phone - "+(i?.phone||"");
-    shopAddress.innerText=i?.address||"";
-  });
+ db.ref("shops/"+id+"/info").once("value",s=>{
+  let i=s.val();
+  shopName.innerText=i?.name||id;
+  shopPhone.innerText="Phone - "+(i?.phone||"");
+  shopAddress.innerText=i?.address||"";
+ });
 
-  render(data.slice(-10).reverse());
-  syncFromFirebase();
+ render(data.slice(-10).reverse());
+ syncFromFirebase();
 }
 
 function loadLocal(){
-  let d=localStorage.getItem(localKey);
-  data=d?JSON.parse(d):[];
+ let d=localStorage.getItem(localKey);
+ data=d?JSON.parse(d):[];
 }
 function saveLocal(){
-  localStorage.setItem(localKey,JSON.stringify(data));
+ localStorage.setItem(localKey,JSON.stringify(data));
 }
 
 function mergeRecord(rec){
-  let existing=data.find(d=>d.mobile===rec.mobile);
+ let existing=data.find(d=>d.mobile===rec.mobile);
 
-  if(existing && editIndex===null){
-    existing.serial=rec.serial||existing.serial;
-    existing.name=rec.name||existing.name;
+ if(existing && editIndex===null){
+  existing.serial=rec.serial||existing.serial;
+  existing.name=rec.name||existing.name;
+ } else {
+  if(editIndex!==null){
+    data[editIndex]=rec;
+    editIndex=null;
   } else {
-    if(editIndex!==null){
-      data[editIndex]=rec;
-      editIndex=null;
-    } else {
-      data.push(rec);
-    }
+    data.push(rec);
   }
+ }
 }
 
 function toggleAdd(){
-  addForm.style.display = addForm.style.display==="none"?"block":"none";
+ addForm.style.display = addForm.style.display==="none"?"block":"none";
 }
 
 function saveRecord(){
-  let rec={
-    name:nameInput.value.trim(),
-    mobile:mobileInput.value.trim(),
-    serial:serialInput.value.trim(),
-    synced:false
-  };
+ let rec={
+  name:nameInput.value.trim(),
+  mobile:mobileInput.value.trim(),
+  serial:serialInput.value.trim(),
+  synced:false
+ };
 
-  if(!rec.name||!rec.mobile) return alert("Required");
+ if(!rec.name||!rec.mobile) return alert("Required");
 
-  mergeRecord(rec);
-  saveLocal();
+ mergeRecord(rec);
+ saveLocal();
 
-  nameInput.value="";
-  mobileInput.value="";
-  serialInput.value="";
+ nameInput.value="";
+ mobileInput.value="";
+ serialInput.value="";
 
-  render(data.slice(-10).reverse());
+ render(data.slice(-10).reverse());
 }
 
 function editRecord(i){
-  let r=data[i];
-  nameInput.value=r.name;
-  mobileInput.value=r.mobile;
-  serialInput.value=r.serial;
-  editIndex=i;
-  addForm.style.display="block";
+ let r=data[i];
+ nameInput.value=r.name;
+ mobileInput.value=r.mobile;
+ serialInput.value=r.serial;
+ editIndex=i;
+ addForm.style.display="block";
 }
+
+searchInput.oninput=function(){
+ let v=this.value.toLowerCase().trim();
+
+ if(!v){
+  render(data.slice(-10).reverse());
+  return;
+ }
+
+ let result=data.filter(r=>
+  (r.name||"").toLowerCase().includes(v) ||
+  (r.mobile||"").includes(v) ||
+  (r.serial||"").toLowerCase().includes(v)
+ );
+
+ render(result);
+};
 
 function render(arr){
-  let html="";
-  arr.forEach((r,i)=>{
-    let realIndex=data.findIndex(d=>d.mobile===r.mobile);
+ let html="";
+ arr.forEach((r,i)=>{
+  let realIndex=data.findIndex(d=>d.mobile===r.mobile);
 
-    html+=`<tr>
-      <td>${i+1}</td>
-      <td>${r.name}</td>
-      <td>${r.mobile}</td>
-      <td>${r.serial}</td>
-      <td>
-        <button onclick="editRecord(${realIndex})">✏️</button>
-        <button onclick="openBill(${realIndex})">🧾</button>
-      </td>
-    </tr>`;
-  });
+  html+=`<tr>
+  <td>${i+1}</td>
+  <td>${r.name}</td>
+  <td>${r.mobile}</td>
+  <td>${r.serial}</td>
+  <td>
+    <button onclick="editRecord(${realIndex})">✏️</button>
+    <button onclick="openBill(${realIndex})">🧾</button>
+  </td>
+  </tr>`;
+ });
 
-  recordsTable.innerHTML=html;
-  totalCount.innerText=data.length;
+ recordsTable.innerHTML=html;
+ totalCount.innerText=data.length;
 }
+
+function exportData(){
+ if(data.length===0) return alert("No data");
+
+ let blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+ let a=document.createElement("a");
+ a.href=URL.createObjectURL(blob);
+ a.download=currentShop+"_backup.json";
+ a.click();
+}
+
+document.getElementById("importFile").addEventListener("change",function(e){
+ let file=e.target.files[0];
+ if(!file) return;
+
+ let r=new FileReader();
+ r.onload=x=>{
+  try{
+   let json=JSON.parse(x.target.result);
+   json.forEach(item=>mergeRecord({...item,synced:false}));
+   saveLocal();
+   render(data.slice(-10).reverse());
+   alert("Imported");
+  }catch{ alert("Invalid file"); }
+ };
+ r.readAsText(file);
+});
 
 /* BILL */
 function openBill(i){
-  currentClient=data[i];
-  billPanel.style.display="block";
-  billItems=[];
-  total.innerText=0;
+ currentClient=data[i];
+ billPanel.style.display="block";
+ billItems=[];
+ total.innerText="KD 0";
 
-  billClient.innerHTML="<b>"+currentClient.name+"</b><br>"+currentClient.mobile;
-  itemsList.innerHTML="";
+ billClient.innerHTML="<b>"+currentClient.name+"</b><br>"+currentClient.mobile;
+ itemsList.innerHTML="";
 }
 
 function closeBill(){ billPanel.style.display="none"; }
 
 function addItem(){
-  let n=itemName.value,q=+itemQty.value,p=+itemPrice.value;
-  if(!n||!q||!p) return;
+ let n=itemName.value,q=+itemQty.value,p=+itemPrice.value;
+ if(!n||!q||!p) return;
 
-  billItems.push({n,q,p});
-  renderItems();
-  calculate();
+ billItems.push({n,q,p});
+ renderItems();
+ calculate();
 }
 
 function renderItems(){
-  let html="";
-  billItems.forEach(i=>{
-    html+=`<div>${i.n} (${i.q} x ${i.p}) = ₹${i.q*i.p}</div>`;
-  });
-  itemsList.innerHTML=html;
+ let html="";
+ billItems.forEach(i=>{
+  html+=`<div>${i.n} (${i.q} x KD ${i.p}) = KD ${i.q*i.p}</div>`;
+ });
+ itemsList.innerHTML=html;
 }
 
 function calculate(){
-  let t=0;
-  billItems.forEach(i=>t+=i.q*i.p);
+ let t=0;
+ billItems.forEach(i=>t+=i.q*i.p);
 
-  let taxVal=t*(tax.value||0)/100;
-  let dis=+discount.value||0;
+ let taxVal=t*(tax.value||0)/100;
+ let dis=+discount.value||0;
 
-  total.innerText=Math.round(t+taxVal-dis);
+ total.innerText="KD "+Math.round(t+taxVal-dis);
 }
 
 function printBill(){
 
-  pShopName.innerText = shopName.innerText;
-  pShopPhone.innerText = shopPhone.innerText;
-  pShopAddress.innerText = shopAddress.innerText;
+ pShopName.innerText = shopName.innerText;
+ pShopPhone.innerText = shopPhone.innerText;
+ pShopAddress.innerText = shopAddress.innerText;
 
-  pClient.innerText = "Client: " + currentClient.name;
+ pClient.innerText = "Client: " + currentClient.name;
 
-  let html="";
-  let subtotal=0;
+ let html="";
+ let subtotal=0;
 
-  billItems.forEach(i=>{
-    let t=i.q*i.p;
-    subtotal+=t;
+ billItems.forEach(i=>{
+  let t=i.q*i.p;
+  subtotal+=t;
 
-    html+=`<tr>
-      <td>${i.n}</td>
-      <td>${i.q}</td>
-      <td>${i.p}</td>
-      <td>${t}</td>
-    </tr>`;
-  });
+  html+=`<tr>
+    <td>${i.n}</td>
+    <td>${i.q}</td>
+    <td>KD ${i.p}</td>
+    <td>KD ${t}</td>
+  </tr>`;
+ });
 
-  pItems.innerHTML = html;
+ pItems.innerHTML = html;
 
-  let taxVal = subtotal*(tax.value||0)/100;
-  let dis = +discount.value||0;
-  let grand = Math.round(subtotal + taxVal - dis);
+ let taxVal = subtotal*(tax.value||0)/100;
+ let dis = +discount.value||0;
+ let grand = Math.round(subtotal + taxVal - dis);
 
-  pTax.innerText = "Tax: KD " + taxVal.toFixed(2);
-  pDiscount.innerText = "Discount: KD " + dis;
-  pTotal.innerText = grand;
+ pTax.innerText = "Tax: KD " + taxVal.toFixed(2);
+ pDiscount.innerText = "Discount: KD " + dis;
+ pTotal.innerText = "KD " + grand;
 
-  let original = document.body.innerHTML;
-  document.body.innerHTML = printArea.innerHTML;
-  window.print();
-  document.body.innerHTML = original;
-  location.reload();
+ let original = document.body.innerHTML;
+ document.body.innerHTML = printArea.innerHTML;
+ window.print();
+ document.body.innerHTML = original;
+ location.reload();
 }
 
 function sendWA(){
-  let msg="Bill for "+currentClient.name+" Total KD "+total.innerText;
-  window.open("https://wa.me/?text="+encodeURIComponent(msg));
+ let msg="Bill for "+currentClient.name+" Total KD "+total.innerText;
+ window.open("https://wa.me/?text="+encodeURIComponent(msg));
+}
+
+function syncFromFirebase(){
+ if(!navigator.onLine) return;
+
+ db.ref("shops/"+currentShop+"/clients").once("value",s=>{
+  let v=s.val();
+  if(!v) return;
+
+  for(let k in v){
+    mergeRecord({...v[k],synced:true});
+  }
+
+  saveLocal();
+ });
 }
 
 window.onload=function(){
-  let s=new URLSearchParams(location.search).get("shop");
-  if(s) loadClient(s);
+ let s=new URLSearchParams(location.search).get("shop");
+ if(s) loadClient(s);
 };
 </script>
 
