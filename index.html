@@ -81,12 +81,8 @@ button { background:#22c55e; color:white; cursor:pointer; }
   <div>
     <button onclick="toggleAdd()">➕ Add</button>
     <button onclick="exportData()">💾 Export</button>
-
-```
-<input type="file" id="importFile" style="display:none">
-<button onclick="importFile.click()">Import</button>
-```
-
+    <input type="file" id="importFile" style="display:none">
+    <button onclick="importFile.click()">Import</button>
   </div>
 
   <div id="addForm">
@@ -130,18 +126,55 @@ button { background:#22c55e; color:white; cursor:pointer; }
 
 </div>
 
+<!-- PRINT AREA -->
+
+<div id="printArea" style="display:none; color:black; background:white; padding:20px">
+
+<h2 id="pShopName"></h2>
+<div id="pShopPhone"></div>
+<div id="pShopAddress"></div>
+
+<hr>
+
+<h3 id="pClient"></h3>
+
+<table border="1" width="100%" style="border-collapse:collapse;text-align:center">
+<thead>
+<tr>
+<th>Item</th>
+<th>Qty</th>
+<th>Price (KD)</th>
+<th>Total (KD)</th>
+</tr>
+</thead>
+<tbody id="pItems"></tbody>
+</table>
+
+<br>
+
+<div id="pTax"></div>
+<div id="pDiscount"></div>
+
+<h2 style="text-align:right;font-size:26px">Grand Total: KD <span id="pTotal"></span></h2>
+
 </div>
 
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
 <script>
+firebase.initializeApp({
+  apiKey:"AIzaSyDbsDvPCUFBa39if7C3enHePG86fNSfEP4",
+  databaseURL:"https://tailorapp-d1d19-default-rtdb.asia-southeast1.firebasedatabase.app"
+});
+const db=firebase.database();
 
-let currentShop="",localKey="",data=[];
-let editIndex=null;
+let currentShop="",localKey="",data=[],editIndex=null;
+let billItems=[],currentClient=null;
 
-/* BILL VAR */
-let billItems=[];
-let currentClient=null;
-
-/* PASSWORD */
 let adminPass=localStorage.getItem("pass")||"admin123";
 
 function changePassword(){
@@ -151,7 +184,6 @@ function changePassword(){
   alert("Password updated");
 }
 
-/* LOGIN */
 function login(){
   if(pass.value===adminPass){
     loginPanel.style.display="none";
@@ -160,11 +192,9 @@ function login(){
   } else alert("Wrong password");
 }
 
-/* ADMIN */
 function saveShop(){
   let id=shopId.value.trim();
   let name=shopNameInput.value.trim();
-
   if(!id||!name) return alert("Required");
 
   db.ref("shops/"+id+"/info").set({
@@ -172,8 +202,6 @@ function saveShop(){
     phone:shopPhoneInput.value,
     address:shopAddressInput.value
   });
-
-  alert("Saved");
 }
 
 function loadShops(){
@@ -186,8 +214,6 @@ function loadShops(){
       <td>${i.name||""}</td>
       <td>
         <button onclick="openShop('${k}')">🔗</button>
-        <button onclick="editShop('${k}','${i.name}','${i.phone}','${i.address}')">✏️</button>
-        <button onclick="deleteShop('${k}')">🗑️</button>
       </td>
       </tr>`;
     }
@@ -199,20 +225,6 @@ function openShop(id){
   window.open(location.href.split("?")[0]+"?shop="+id,"_blank");
 }
 
-function editShop(id,n,p,a){
-  shopId.value=id;
-  shopNameInput.value=n;
-  shopPhoneInput.value=p;
-  shopAddressInput.value=a;
-}
-
-function deleteShop(id){
-  if(confirm("Delete shop?")){
-    db.ref("shops/"+id).remove();
-  }
-}
-
-/* CLIENT LOAD */
 function loadClient(id){
   currentShop=id;
   localKey="shop_"+id;
@@ -234,7 +246,6 @@ function loadClient(id){
   syncFromFirebase();
 }
 
-/* LOCAL */
 function loadLocal(){
   let d=localStorage.getItem(localKey);
   data=d?JSON.parse(d):[];
@@ -243,15 +254,11 @@ function saveLocal(){
   localStorage.setItem(localKey,JSON.stringify(data));
 }
 
-/* MERGE */
 function mergeRecord(rec){
   let existing=data.find(d=>d.mobile===rec.mobile);
 
   if(existing && editIndex===null){
-    let oldS=existing.serial?existing.serial.split(","):[];
-    let newS=rec.serial?rec.serial.split(","):[];
-    let merged=[...new Set([...oldS,...newS].map(s=>s.trim()))];
-    existing.serial=merged.join(", ");
+    existing.serial=rec.serial||existing.serial;
     existing.name=rec.name||existing.name;
   } else {
     if(editIndex!==null){
@@ -263,12 +270,10 @@ function mergeRecord(rec){
   }
 }
 
-/* TOGGLE ADD */
 function toggleAdd(){
-  addForm.style.display = addForm.style.display === "none" ? "block" : "none";
+  addForm.style.display = addForm.style.display==="none"?"block":"none";
 }
 
-/* SAVE */
 function saveRecord(){
   let rec={
     name:nameInput.value.trim(),
@@ -287,10 +292,8 @@ function saveRecord(){
   serialInput.value="";
 
   render(data.slice(-10).reverse());
-  addForm.style.display = "none";
 }
 
-/* EDIT */
 function editRecord(i){
   let r=data[i];
   nameInput.value=r.name;
@@ -300,25 +303,6 @@ function editRecord(i){
   addForm.style.display="block";
 }
 
-/* SEARCH */
-searchInput.oninput=function(){
-  let v=this.value.toLowerCase();
-
-  if(!v){
-    render(data.slice(-10).reverse());
-    return;
-  }
-
-  let result=data.filter(r=>
-    r.name.toLowerCase().includes(v) ||
-    r.mobile.includes(v) ||
-    r.serial.includes(v)
-  );
-
-  render(result);
-};
-
-/* RENDER */
 function render(arr){
   let html="";
   arr.forEach((r,i)=>{
@@ -340,7 +324,7 @@ function render(arr){
   totalCount.innerText=data.length;
 }
 
-/* BILL FUNCTIONS */
+/* BILL */
 function openBill(i){
   currentClient=data[i];
   billPanel.style.display="block";
@@ -351,9 +335,7 @@ function openBill(i){
   itemsList.innerHTML="";
 }
 
-function closeBill(){
-  billPanel.style.display="none";
-}
+function closeBill(){ billPanel.style.display="none"; }
 
 function addItem(){
   let n=itemName.value,q=+itemQty.value,p=+itemPrice.value;
@@ -382,93 +364,55 @@ function calculate(){
   total.innerText=Math.round(t+taxVal-dis);
 }
 
-function printBill(){ window.print(); }
+function printBill(){
+
+  pShopName.innerText = shopName.innerText;
+  pShopPhone.innerText = shopPhone.innerText;
+  pShopAddress.innerText = shopAddress.innerText;
+
+  pClient.innerText = "Client: " + currentClient.name;
+
+  let html="";
+  let subtotal=0;
+
+  billItems.forEach(i=>{
+    let t=i.q*i.p;
+    subtotal+=t;
+
+    html+=`<tr>
+      <td>${i.n}</td>
+      <td>${i.q}</td>
+      <td>${i.p}</td>
+      <td>${t}</td>
+    </tr>`;
+  });
+
+  pItems.innerHTML = html;
+
+  let taxVal = subtotal*(tax.value||0)/100;
+  let dis = +discount.value||0;
+  let grand = Math.round(subtotal + taxVal - dis);
+
+  pTax.innerText = "Tax: KD " + taxVal.toFixed(2);
+  pDiscount.innerText = "Discount: KD " + dis;
+  pTotal.innerText = grand;
+
+  let original = document.body.innerHTML;
+  document.body.innerHTML = printArea.innerHTML;
+  window.print();
+  document.body.innerHTML = original;
+  location.reload();
+}
 
 function sendWA(){
-  let msg="Bill for "+currentClient.name+" Total ₹"+total.innerText;
+  let msg="Bill for "+currentClient.name+" Total KD "+total.innerText;
   window.open("https://wa.me/?text="+encodeURIComponent(msg));
 }
 
-/* EXPORT */
-function exportData(){
-  let blob=new Blob([JSON.stringify(data)],{type:"application/json"});
-  let a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download=currentShop+".json";
-  a.click();
-}
-
-/* IMPORT */
-document.getElementById("importFile").addEventListener("change",function(e){
-  let file=e.target.files[0];
-  let r=new FileReader();
-
-  r.onload=x=>{
-    let json=JSON.parse(x.target.result);
-    json.forEach(item=>{
-      mergeRecord({...item,synced:false});
-    });
-    saveLocal();
-    render(data.slice(-10).reverse());
-    alert("Imported + merged");
-  };
-
-  r.readAsText(file);
-});
-
-/* SYNC */
-function sync(){
-  if(!navigator.onLine) return;
-
-  let updates={},base="shops/"+currentShop+"/clients/";
-
-  data.forEach(item=>{
-    if(!item.synced){
-      let k=db.ref().child(base).push().key;
-      updates[base+k]=item;
-      item.synced=true;
-    }
-  });
-
-  if(Object.keys(updates).length>0){
-    db.ref().update(updates).then(saveLocal);
-  }
-}
-setInterval(sync,5000);
-
-function syncFromFirebase(){
-  if(!navigator.onLine) return;
-
-  db.ref("shops/"+currentShop+"/clients").once("value",s=>{
-    let v=s.val();
-    if(!v) return;
-
-    for(let k in v){
-      mergeRecord({...v[k],synced:true});
-    }
-
-    saveLocal();
-  });
-}
-
-/* INIT */
 window.onload=function(){
   let s=new URLSearchParams(location.search).get("shop");
   if(s) loadClient(s);
 };
-
-</script>
-
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-
-<script>
-firebase.initializeApp({
-  apiKey:"AIzaSyAr3IEvh2rCzmqDVmRqkyb40u79880x1sE",
-  databaseURL:"https://tailorsaas-9f51c-default-rtdb.asia-southeast1.firebasedatabase.app"
-});
-const db=firebase.database();
 </script>
 
 </body>
