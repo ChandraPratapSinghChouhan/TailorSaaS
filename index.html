@@ -9,169 +9,110 @@
 <style>
 body { font-family: Arial; background:#0f172a; color:white; margin:0; }
 .container { padding:15px; text-align:center; }
-
-input, button {
-  padding:10px; margin:5px;
-  border-radius:6px; border:none;
-}
-
+input, button { padding:10px; margin:5px; border-radius:6px; border:none; }
 button { background:#22c55e; color:white; cursor:pointer; }
-
 .searchBox { width:90%; padding:12px; font-size:16px; }
-
 .table { width:100%; border-collapse: collapse; }
 .table th, .table td { padding:8px; border-bottom:1px solid #444; }
-
 #adminPanel, #clientPanel { display:none; }
 #addForm { display:none; }
 #billPanel { display:none; background:#020617; padding:15px; margin-top:10px; }
-
 </style>
 
 </head>
 
 <body>
-
 <div class="container">
 
-<!-- LOGIN -->
-
 <div id="loginPanel">
-  <h2>Admin Login</h2>
-  <input id="pass" placeholder="Password">
-  <button onclick="login()">Login</button>
+<h2>Admin Login</h2>
+<input id="pass" placeholder="Password">
+<button onclick="login()">Login</button>
 </div>
-
-<!-- ADMIN -->
 
 <div id="adminPanel">
-  <h2>Admin Dashboard</h2>
+<h2>Admin Dashboard</h2>
+<input id="newPass" placeholder="Change Password">
+<button onclick="changePassword()">Update Password</button><br><br>
 
-  <input id="newPass" placeholder="Change Password">
-  <button onclick="changePassword()">Update Password</button>
-
-<br><br>
-
-  <input id="shopId" placeholder="Shop ID">
-  <input id="shopNameInput" placeholder="Shop Name">
-  <input id="shopPhoneInput" placeholder="Phone">
-  <input id="shopAddressInput" placeholder="Address">
-
+<input id="shopId" placeholder="Shop ID">
+<input id="shopNameInput" placeholder="Shop Name">
+<input id="shopPhoneInput" placeholder="Phone">
+<input id="shopAddressInput" placeholder="Address">
 <button onclick="saveShop()">Save / Update Shop</button>
 
-  <table class="table">
-    <thead>
-      <tr><th>ID</th><th>Name</th><th>Total Clients</th><th>Actions</th></tr>
-    </thead>
-    <tbody id="shopTable"></tbody>
-  </table>
+<table class="table">
+<thead><tr><th>ID</th><th>Name</th><th>Total Clients</th><th>Actions</th></tr></thead>
+<tbody id="shopTable"></tbody>
+</table>
 </div>
-
-<!-- CLIENT -->
 
 <div id="clientPanel">
+<h1 id="shopName"></h1>
+<h3 id="shopPhone"></h3>
+<h4 id="shopAddress"></h4>
+<h4>Total Records: <span id="totalCount">0</span></h4>
 
-  <h1 id="shopName"></h1>
-  <h3 id="shopPhone"></h3>
-  <h4 id="shopAddress"></h4>
+<input id="searchInput" class="searchBox" placeholder="Search">
 
-  <h4>Total Records: <span id="totalCount">0</span></h4>
-
-  <input id="searchInput" class="searchBox" placeholder="Search name / mobile / book">
-
-  <div>
-    <button onclick="toggleAdd()">➕ Add</button>
-    <button onclick="exportData()">💾 Export</button>
-    <input type="file" id="importFile" style="display:none">
-    <button onclick="importFile.click()">Import</button>
-  </div>
-
-  <div id="addForm">
-    <input id="nameInput" placeholder="Name">
-    <input id="mobileInput" placeholder="Mobile">
-    <input id="serialInput" placeholder="Book No">
-    <button onclick="saveRecord()">Save</button>
-  </div>
-
-  <table class="table">
-    <thead>
-      <tr>
-        <th>#</th><th>Name</th><th>Mobile</th><th>Book</th><th>Action</th>
-      </tr>
-    </thead>
-    <tbody id="recordsTable"></tbody>
-  </table>
-
+<div>
+<button onclick="toggleAdd()">➕ Add</button>
+<button onclick="exportData()">💾 Export</button>
+<input type="file" id="importFile" style="display:none">
+<button onclick="importFile.click()">Import</button>
 </div>
 
-<!-- BILL PANEL -->
+<div id="addForm">
+<input id="nameInput" placeholder="Name">
+<input id="mobileInput" placeholder="Mobile">
+<input id="serialInput" placeholder="Book No">
+<button onclick="saveRecord()">Save</button>
+</div>
+
+<table class="table">
+<thead><tr><th>#</th><th>Name</th><th>Mobile</th><th>Book</th><th>Action</th></tr></thead>
+<tbody id="recordsTable"></tbody>
+</table>
+</div>
 
 <div id="billPanel">
-  <h2>🧾 Bill</h2>
-  <div id="billClient"></div>
+<h2>🧾 Bill</h2>
+<div id="billClient"></div>
 
-  <input id="itemName" placeholder="Item">
-  <input id="itemQty" type="number" placeholder="Qty">
-  <input id="itemPrice" type="number" placeholder="Price">
-  <button onclick="addItem()">Add Item</button>
+<input id="itemName" placeholder="Item">
+<input id="itemQty" type="number" placeholder="Qty">
+<input id="itemPrice" type="number" placeholder="Price">
+<button onclick="addItem()">Add Item</button>
 
-  <div id="itemsList"></div>
+<div id="itemsList"></div>
 
-  <br>
-  <input id="tax" placeholder="Tax %">
-  <input id="discount" placeholder="Discount">
+<input id="tax" placeholder="Tax %">
+<input id="discount" placeholder="Discount">
 
-  <h2>Total <span id="total">KD 0</span></h2>
+<h2>Total <span id="total">KD 0</span></h2>
 
 <button onclick="printBill()">Print</button> <button onclick="downloadPDF()">Download PDF</button> <button onclick="sendWA()">WhatsApp</button> <button onclick="closeBill()">Close</button>
 
 </div>
 
-<!-- PREMIUM PRINT AREA -->
-
 <div id="printArea" style="display:none; font-family:Arial; color:#000; padding:30px">
-
-<div style="text-align:center; margin-bottom:20px">
-  <h1 id="pShopName" style="margin:0;"></h1>
-  <div id="pShopPhone"></div>
-  <div id="pShopAddress"></div>
+<div style="text-align:center">
+<h1 id="pShopName"></h1>
+<div id="pShopPhone"></div>
+<div id="pShopAddress"></div>
 </div>
-
 <hr>
-
-<div style="display:flex; justify-content:space-between; margin-top:10px">
-  <div id="pClient"></div>
-  <div>Date: <span id="pDate"></span></div>
+<div style="display:flex;justify-content:space-between">
+<div id="pClient"></div>
+<div id="pDate"></div>
 </div>
-
-<br>
-
-<table border="1" width="100%" style="border-collapse:collapse;text-align:center;font-size:14px">
-<thead style="background:#eee">
-<tr>
-<th>Item</th>
-<th>Qty</th>
-<th>Price (KD)</th>
-<th>Total (KD)</th>
-</tr>
-</thead>
+<table border="1" width="100%" style="border-collapse:collapse;text-align:center">
+<thead><tr><th>Item</th><th>Qty</th><th>Price (KD)</th><th>Total (KD)</th></tr></thead>
 <tbody id="pItems"></tbody>
 </table>
-
-<br>
-
-<div style="text-align:right">
-  <div id="pTax"></div>
-  <div id="pDiscount"></div>
-  <h2 style="margin-top:10px">Grand Total: <span id="pTotal"></span></h2>
-</div>
-
-<br><br>
-
-<div style="text-align:center; font-size:12px">
-  Thank you for your business
-</div>
-
+<div id="pTax"></div>
+<div id="pDiscount"></div>
+<h2 style="text-align:right">Grand Total: <span id="pTotal"></span></h2>
 </div>
 
 </div>
@@ -184,348 +125,161 @@ button { background:#22c55e; color:white; cursor:pointer; }
 
 <script>
 firebase.initializeApp({
-  apiKey: "AIzaSyAr3IEvh2rCzmqDVmRqkyb40u79880x1sE",
-  authDomain: "tailorsaas-9f51c.firebaseapp.com",
-  databaseURL: "https://tailorsaas-9f51c-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "tailorsaas-9f51c",
-  storageBucket: "tailorsaas-9f51c.firebasestorage.app",
-  messagingSenderId: "827905458969",
-  appId: "1:827905458969:web:d8723cefbf9798e52f3b88"
+apiKey:"AIzaSyAr3IEvh2rCzmqDVmRqkyb40u79880x1sE",
+databaseURL:"https://tailorsaas-9f51c-default-rtdb.asia-southeast1.firebasedatabase.app"
 });
 
 const db=firebase.database();
-
-let currentShop="",localKey="",data=[],editIndex=null;
-let billItems=[],currentClient=null;
-
+let currentShop="",data=[],editIndex=null,billItems=[],currentClient=null;
 let adminPass=localStorage.getItem("pass")||"admin123";
 
-function login(){
- if(pass.value===adminPass){
-  loginPanel.style.display="none";
-  adminPanel.style.display="block";
-  loadShops();
- } else alert("Wrong password");
-}
-
-function changePassword(){
- if(!newPass.value) return;
- localStorage.setItem("pass",newPass.value);
- adminPass=newPass.value;
- alert("Updated");
-}
+function login(){ if(pass.value===adminPass){loginPanel.style.display="none";adminPanel.style.display="block";loadShops();} else alert("Wrong");}
+function changePassword(){localStorage.setItem("pass",newPass.value);adminPass=newPass.value;alert("Updated");}
 
 function saveShop(){
- let id=shopId.value.trim();
- let name=shopNameInput.value.trim();
- if(!id||!name) return alert("Required");
-
- db.ref("shops/"+id+"/info").set({
-  name,
-  phone:shopPhoneInput.value,
-  address:shopAddressInput.value
- });
+let id=shopId.value.trim(),name=shopNameInput.value.trim();
+db.ref("shops/"+id+"/info").set({name,phone:shopPhoneInput.value,address:shopAddressInput.value});
 }
 
 function loadShops(){
- db.ref("shops").on("value",s=>{
-  let v=s.val()||{},html="";
-  for(let k in v){
-    let i=v[k].info||{};
-    let count=v[k].clients?Object.keys(v[k].clients).length:0;
-
-    html+=`<tr>
-    <td>${k}</td>
-    <td>${i.name||""}</td>
-    <td>${count}</td>
-    <td>
-      <button onclick="openShop('${k}')">🔗</button>
-      <button onclick="editShop('${k}','${i.name}','${i.phone}','${i.address}')">✏️</button>
-      <button onclick="deleteShop('${k}')">🗑️</button>
-    </td>
-    </tr>`;
-  }
-  shopTable.innerHTML=html;
- });
+db.ref("shops").on("value",s=>{
+let v=s.val()||{},html="";
+for(let k in v){
+let i=v[k].info||{},count=v[k].clients?Object.keys(v[k].clients).length:0;
+html+=`<tr><td>${k}</td><td>${i.name}</td><td>${count}</td>
+<td><button onclick="openShop('${k}')">🔗</button>
+<button onclick="editShop('${k}','${i.name}','${i.phone}','${i.address}')">✏️</button>
+<button onclick="deleteShop('${k}')">🗑️</button></td></tr>`;
+}
+shopTable.innerHTML=html;
+});
 }
 
-function openShop(id){
- window.open(location.href.split("?")[0]+"?shop="+id,"_blank");
-}
-
-function editShop(id,n,p,a){
- shopId.value=id;
- shopNameInput.value=n;
- shopPhoneInput.value=p;
- shopAddressInput.value=a;
-}
-
-function deleteShop(id){
- if(confirm("Delete?")) db.ref("shops/"+id).remove();
-}
+function openShop(id){window.open(location.href.split("?")[0]+"?shop="+id);}
+function editShop(id,n,p,a){shopId.value=id;shopNameInput.value=n;shopPhoneInput.value=p;shopAddressInput.value=a;}
+function deleteShop(id){if(confirm("Delete?"))db.ref("shops/"+id).remove();}
 
 function loadClient(id){
- currentShop=id;
- localKey="shop_"+id;
-
- loginPanel.style.display="none";
- adminPanel.style.display="none";
- clientPanel.style.display="block";
-
- loadLocal();
-
- db.ref("shops/"+id+"/info").once("value",s=>{
-  let i=s.val();
-  shopName.innerText=i?.name||id;
-  shopPhone.innerText="Phone - "+(i?.phone||"");
-  shopAddress.innerText=i?.address||"";
- });
-
- render(data.slice(-10).reverse());
- syncFromFirebase();
-}
-
-function loadLocal(){
- let d=localStorage.getItem(localKey);
- data=d?JSON.parse(d):[];
-}
-function saveLocal(){
- localStorage.setItem(localKey,JSON.stringify(data));
-}
-
-function mergeRecord(rec){
- let existing=data.find(d=>d.mobile===rec.mobile);
-
- if(existing && editIndex===null){
-  existing.serial=rec.serial||existing.serial;
-  existing.name=rec.name||existing.name;
- } else {
-  if(editIndex!==null){
-    data[editIndex]=rec;
-    editIndex=null;
-  } else {
-    data.push(rec);
-  }
- }
-}
-
-function toggleAdd(){
- addForm.style.display = addForm.style.display==="none"?"block":"none";
+currentShop=id;clientPanel.style.display="block";adminPanel.style.display="none";
+db.ref("shops/"+id+"/info").once("value",s=>{
+let i=s.val();shopName.innerText=i.name;shopPhone.innerText=i.phone;shopAddress.innerText=i.address;
+});
+data=[];
+db.ref("shops/"+id+"/clients").on("value",s=>{
+let v=s.val()||{};data=Object.values(v);render(data);
+});
 }
 
 function saveRecord(){
- let rec={
-  name:nameInput.value.trim(),
-  mobile:mobileInput.value.trim(),
-  serial:serialInput.value.trim(),
-  synced:false
- };
-
- if(!rec.name||!rec.mobile) return alert("Required");
-
- mergeRecord(rec);
- saveLocal();
-
- nameInput.value="";
- mobileInput.value="";
- serialInput.value="";
-
- render(data.slice(-10).reverse());
+let rec={name:nameInput.value,mobile:mobileInput.value,serial:serialInput.value};
+db.ref("shops/"+currentShop+"/clients").push(rec);
 }
 
-function editRecord(i){
- let r=data[i];
- nameInput.value=r.name;
- mobileInput.value=r.mobile;
- serialInput.value=r.serial;
- editIndex=i;
- addForm.style.display="block";
+function render(arr){
+let html="";
+arr.forEach((r,i)=>{
+html+=`<tr><td>${i+1}</td><td>${r.name}</td><td>${r.mobile}</td><td>${r.serial||""}</td>
+<td><button onclick="openBill(${i})">🧾</button></td></tr>`;
+});
+recordsTable.innerHTML=html;
+totalCount.innerText=arr.length;
 }
 
 searchInput.oninput=function(){
- let v=this.value.toLowerCase().trim();
-
- if(!v){
-  render(data.slice(-10).reverse());
-  return;
- }
-
- let result=data.filter(r=>
-  (r.name||"").toLowerCase().includes(v) ||
-  (r.mobile||"").includes(v) ||
-  (r.serial||"").toLowerCase().includes(v)
- );
-
- render(result);
+let v=this.value.toLowerCase();
+render(data.filter(r=>r.name.toLowerCase().includes(v)||r.mobile.includes(v)||(r.serial||"").includes(v)));
 };
 
-function render(arr){
- let html="";
- arr.forEach((r,i)=>{
-  let realIndex=data.findIndex(d=>d.mobile===r.mobile);
-
-  html+=`<tr>
-  <td>${i+1}</td>
-  <td>${r.name}</td>
-  <td>${r.mobile}</td>
-  <td>${r.serial}</td>
-  <td>
-    <button onclick="editRecord(${realIndex})">✏️</button>
-    <button onclick="openBill(${realIndex})">🧾</button>
-  </td>
-  </tr>`;
- });
-
- recordsTable.innerHTML=html;
- totalCount.innerText=data.length;
-}
-
 function exportData(){
- if(data.length===0) return alert("No data");
-
- let blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
- let a=document.createElement("a");
- a.href=URL.createObjectURL(blob);
- a.download=currentShop+"_backup.json";
- a.click();
+let blob=new Blob([JSON.stringify(data)],{type:"application/json"});
+let a=document.createElement("a");
+a.href=URL.createObjectURL(blob);
+a.download="backup.json";a.click();
 }
 
 document.getElementById("importFile").addEventListener("change",function(e){
- let file=e.target.files[0];
- if(!file) return;
-
- let r=new FileReader();
- r.onload=x=>{
-  try{
-   let json=JSON.parse(x.target.result);
-   json.forEach(item=>mergeRecord({...item,synced:false}));
-   saveLocal();
-   render(data.slice(-10).reverse());
-   alert("Imported");
-  }catch{ alert("Invalid file"); }
- };
- r.readAsText(file);
+let file=e.target.files[0];
+let r=new FileReader();
+r.onload=x=>{
+let json=JSON.parse(x.target.result);
+json.forEach(item=>{
+let serialFix=item.serial||item.book||item.bookNo||item.book_number||"";
+db.ref("shops/"+currentShop+"/clients").push({
+name:item.name||"",mobile:item.mobile||"",serial:serialFix
+});
+});
+alert("Import OK");
+};
+r.readAsText(file);
 });
 
 /* BILL */
 function openBill(i){
- currentClient=data[i];
- billPanel.style.display="block";
- billItems=[];
- total.innerText="KD 0";
-
- billClient.innerHTML="<b>"+currentClient.name+"</b><br>"+currentClient.mobile;
- itemsList.innerHTML="";
+currentClient=data[i];
+billItems=[];billPanel.style.display="block";
 }
 
-function closeBill(){ billPanel.style.display="none"; }
-
 function addItem(){
- let n=itemName.value,q=+itemQty.value,p=+itemPrice.value;
- if(!n||!q||!p) return;
-
- billItems.push({n,q,p});
- renderItems();
- calculate();
+billItems.push({n:itemName.value,q:+itemQty.value,p:+itemPrice.value});
+renderItems();calculate();
 }
 
 function renderItems(){
- let html="";
- billItems.forEach(i=>{
-  html+=`<div>${i.n} (${i.q} x KD ${i.p}) = KD ${i.q*i.p}</div>`;
- });
- itemsList.innerHTML=html;
+itemsList.innerHTML=billItems.map(i=>`${i.n} (${i.q} x KD ${i.p}) = KD ${i.q*i.p}`).join("<br>");
 }
 
 function calculate(){
- let t=0;
- billItems.forEach(i=>t+=i.q*i.p);
-
- let taxVal=t*(tax.value||0)/100;
- let dis=+discount.value||0;
-
- total.innerText="KD "+Math.round(t+taxVal-dis);
+let t=billItems.reduce((a,b)=>a+(b.q*b.p),0);
+let taxVal=t*(tax.value||0)/100;
+let dis=+discount.value||0;
+total.innerText="KD "+Math.round(t+taxVal-dis);
 }
 
 function fillPrintData(){
- pShopName.innerText = shopName.innerText;
- pShopPhone.innerText = shopPhone.innerText;
- pShopAddress.innerText = shopAddress.innerText;
- pClient.innerText = "Client: " + currentClient.name;
- pDate.innerText = new Date().toLocaleDateString();
+pShopName.innerText=shopName.innerText;
+pShopPhone.innerText=shopPhone.innerText;
+pShopAddress.innerText=shopAddress.innerText;
+pClient.innerText="Client: "+currentClient.name;
+pDate.innerText=new Date().toLocaleDateString();
 
- let html="";
- let subtotal=0;
+let html="",subtotal=0;
+billItems.forEach(i=>{
+let t=i.q*i.p;subtotal+=t;
+html+=`<tr><td>${i.n}</td><td>${i.q}</td><td>KD ${i.p}</td><td>KD ${t}</td></tr>`;
+});
+pItems.innerHTML=html;
 
- billItems.forEach(i=>{
-  let t=i.q*i.p;
-  subtotal+=t;
+let taxVal=subtotal*(tax.value||0)/100;
+let dis=+discount.value||0;
+let grand=Math.round(subtotal+taxVal-dis);
 
-  html+=`<tr>
-    <td>${i.n}</td>
-    <td>${i.q}</td>
-    <td>KD ${i.p}</td>
-    <td>KD ${t}</td>
-  </tr>`;
- });
+pTax.innerText="Tax: KD "+taxVal;
+pDiscount.innerText="Discount: KD "+dis;
+pTotal.innerText="KD "+grand;
 
- pItems.innerHTML = html;
-
- let taxVal = subtotal*(tax.value||0)/100;
- let dis = +discount.value||0;
- let grand = Math.round(subtotal + taxVal - dis);
-
- pTax.innerText = "Tax: KD " + taxVal.toFixed(2);
- pDiscount.innerText = "Discount: KD " + dis;
- pTotal.innerText = "KD " + grand;
+saveBill(grand,taxVal,dis);
 }
 
-function printBill(){
- fillPrintData();
- let original = document.body.innerHTML;
- document.body.innerHTML = printArea.innerHTML;
- window.print();
- document.body.innerHTML = original;
- location.reload();
+function saveBill(grand,taxVal,dis){
+db.ref("shops/"+currentShop+"/bills").push({
+client:currentClient.name,
+mobile:currentClient.mobile,
+items:billItems,
+total:grand,
+tax:taxVal,
+discount:dis,
+date:new Date().toISOString()
+});
 }
 
-function downloadPDF(){
- fillPrintData();
-
- let opt = {
-    margin: 5,
-    filename: currentClient.name + "_bill.pdf",
-    image: { type: 'jpeg', quality: 1 },
-    html2canvas: { scale: 2 },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-  };
-
- html2pdf().set(opt).from(printArea).save();
-}
-
-function sendWA(){
- let msg="Bill for "+currentClient.name+" Total KD "+total.innerText;
- window.open("https://wa.me/?text="+encodeURIComponent(msg));
-}
-
-function syncFromFirebase(){
- if(!navigator.onLine) return;
-
- db.ref("shops/"+currentShop+"/clients").once("value",s=>{
-  let v=s.val();
-  if(!v) return;
-
-  for(let k in v){
-    mergeRecord({...v[k],synced:true});
-  }
-
-  saveLocal();
- });
-}
+function printBill(){fillPrintData();window.print();}
+function downloadPDF(){fillPrintData();html2pdf().from(printArea).save();}
+function sendWA(){window.open("https://wa.me/?text=Bill KD "+total.innerText);}
+function closeBill(){billPanel.style.display="none";}
 
 window.onload=function(){
- let s=new URLSearchParams(location.search).get("shop");
- if(s) loadClient(s);
+let s=new URLSearchParams(location.search).get("shop");
+if(s) loadClient(s);
 };
 </script>
 
