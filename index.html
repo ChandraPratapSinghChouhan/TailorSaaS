@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Tailor App</title>
+<title>Tailor Pro Final</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -102,9 +102,8 @@ let data=[];
 let editIndex=null;
 let currentShop="";
 
-/* INIT (FIXED FOR GITHUB) */
+/* INIT */
 window.onload = function(){
-
   shops = JSON.parse(localStorage.getItem("shops")||"{}");
 
   let urlParams = new URLSearchParams(window.location.search);
@@ -112,10 +111,9 @@ window.onload = function(){
 
   if(autoShop && shops[autoShop]){
     openShop(autoShop);
-    return;
+  } else {
+    loginPanel.style.display="block";
   }
-
-  loginPanel.style.display="block";
 };
 
 /* LOGIN */
@@ -129,6 +127,7 @@ function login(){
   } else alert("Wrong password");
 }
 
+/* PASSWORD */
 function changePassword(){
   if(!newPass.value) return;
   localStorage.setItem("pass",newPass.value);
@@ -141,8 +140,6 @@ function saveShop(){
   let id=shopId.value.trim();
   if(!id) return alert("Enter ID");
 
-  shops = JSON.parse(localStorage.getItem("shops")||"{}");
-
   shops[id]={
     name:shopNameInput.value,
     phone:shopPhoneInput.value,
@@ -150,9 +147,8 @@ function saveShop(){
   };
 
   localStorage.setItem("shops",JSON.stringify(shops));
-
   loadShops();
-  alert("Shop saved ✅");
+  alert("Shop saved");
 }
 
 function loadShops(){
@@ -179,7 +175,7 @@ function loadShops(){
 function copyLink(id){
   let link = window.location.origin + window.location.pathname + "?shop=" + id;
   navigator.clipboard.writeText(link);
-  alert("Shop link copied:\n"+link);
+  alert("Link copied:\n"+link);
 }
 
 function editShop(id){
@@ -200,7 +196,6 @@ function deleteShop(id){
 
 function openShop(id){
   currentShop=id;
-
   data=JSON.parse(localStorage.getItem("data_"+id)||"[]");
 
   loginPanel.style.display="none";
@@ -220,7 +215,7 @@ function toggleAdd(){
   addForm.style.display = addForm.style.display==="none"?"block":"none";
 }
 
-/* COMPRESS IMAGE */
+/* IMAGE */
 function compressImage(file, callback){
   let img=new Image();
   let reader=new FileReader();
@@ -245,7 +240,6 @@ function compressImage(file, callback){
   reader.readAsDataURL(file);
 }
 
-/* CLOUDINARY */
 function uploadToCloudinary(file, callback){
   let formData=new FormData();
   formData.append("file",file);
@@ -256,11 +250,10 @@ function uploadToCloudinary(file, callback){
     body:formData
   })
   .then(res=>res.json())
-  .then(d=>callback(d.secure_url))
-  .catch(()=>alert("Upload failed"));
+  .then(d=>callback(d.secure_url));
 }
 
-/* SAVE */
+/* SAVE CLIENT */
 function saveRecord(){
   let file=imageInput.files[0];
 
@@ -283,12 +276,12 @@ function saveRecord(){
       uploadToCloudinary(compressed,(url)=>{
         rec.image=url;
         finishSave(rec);
-        alert("Saved successfully ✅");
+        alert("Saved ✅");
       });
     });
   } else {
     finishSave(rec);
-    alert("Saved successfully ✅");
+    alert("Saved ✅");
   }
 }
 
@@ -323,7 +316,7 @@ function editRecord(i){
 
 /* DELETE */
 function deleteRecord(i){
-  if(confirm("Delete record?")){
+  if(confirm("Delete?")){
     data.splice(i,1);
     localStorage.setItem("data_"+currentShop,JSON.stringify(data));
     render();
@@ -351,51 +344,38 @@ function exportData(){
 }
 
 /* IMPORT */
-document.getElementById("importFile").addEventListener("change",function(e){
+importFile.onchange=function(e){
   let file=e.target.files[0];
-  if(!file) return;
-
   let reader=new FileReader();
 
   reader.onload=function(evt){
     let json=JSON.parse(evt.target.result);
-    json.forEach(item=>data.push(item));
-
+    json.forEach(i=>data.push(i));
     localStorage.setItem("data_"+currentShop,JSON.stringify(data));
     render();
-    alert("Imported successfully");
+    alert("Imported");
   };
 
   reader.readAsText(file);
-});
+};
 
 /* PRINT */
 function printRecord(i){
   let r=data[i];
 
-  let win=window.open("");
+  let w=window.open("");
 
-  win.document.write(`
+  w.document.write(`
   <html>
   <head>
   <style>
-  @page { size:A4; margin:10mm; }
-  body { font-family:Arial; text-align:center; }
-
-  .box { padding:10px; }
-
-  img {
-    max-width:100%;
-    max-height:70vh;
-    object-fit:contain;
-    margin-top:10px;
-  }
+  @page{size:A4;margin:10mm;}
+  body{text-align:center;font-family:Arial;}
+  img{max-width:100%;max-height:70vh;margin-top:10px;}
   </style>
   </head>
-
   <body>
 
-  <div class="box">
   <h2>${shopName.innerText}</h2>
   <p>${shopPhone.innerText}</p>
   <p>${shopAddress.innerText}</p>
@@ -405,15 +385,14 @@ function printRecord(i){
   <h3>${r.name}</h3>
   <p>${r.mobile}</p>
   <p>${r.serial}</p>
-  </div>
 
-  ${r.image ? `<img src="${r.image}">` : ""}
+  ${r.image?`<img src="${r.image}">`:""}
 
   </body>
   </html>
   `);
 
-  win.print();
+  w.print();
 }
 
 /* RENDER */
