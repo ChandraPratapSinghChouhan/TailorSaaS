@@ -2,20 +2,17 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Tailor Pro Final</title>
+<title>Tailor Pro FINAL</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-
-<!-- PDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
 body{font-family:Arial;background:#0f172a;color:white;text-align:center;}
 input,button{padding:8px;margin:4px;border-radius:6px;border:none;}
-button{background:#22c55e;color:white;}
+button{background:#22c55e;color:white;cursor:pointer;}
 .table{width:100%;border-collapse:collapse;}
 td,th{padding:6px;border-bottom:1px solid #444;}
 #adminPanel,#clientPanel{display:none;}
@@ -24,7 +21,7 @@ td,th{padding:6px;border-bottom:1px solid #444;}
 
 <body>
 
-<h2>Tailor Pro Firebase</h2>
+<h2>Tailor Pro FINAL</h2>
 
 <div id="loginPanel">
 <input id="pass" placeholder="Password">
@@ -63,15 +60,7 @@ td,th{padding:6px;border-bottom:1px solid #444;}
 <input id="serialInput" placeholder="Book No">
 <input type="file" id="imageInput">
 
-<br>
-
-<input id="m1" placeholder="Length">
-<input id="m2" placeholder="Chest">
-<input id="m3" placeholder="Waist">
-<input id="m4" placeholder="Shoulder">
-<input id="m5" placeholder="Collar">
-
-<button onclick="saveClient()">Save</button>
+<button onclick="saveClient()">Save Client</button>
 
 <table class="table">
 <thead><tr><th>Name</th><th>Mobile</th><th>Book</th><th>Img</th><th>Action</th></tr></thead>
@@ -82,41 +71,46 @@ td,th{padding:6px;border-bottom:1px solid #444;}
 
 <script>
 
-// Firebase config
+// FIREBASE
 firebase.initializeApp({
   apiKey: "AIzaSyDbsDvPCUFBa39if7C3enHePG86fNSfEP4",
   authDomain: "tailorapp-d1d19.firebaseapp.com",
   projectId: "tailorapp-d1d19"
 });
-
 let db = firebase.firestore();
 
+// GLOBALS
 let currentShop="";
 let editId=null;
 
 /* LOGIN */
-let adminPass = localStorage.getItem("pass") || "admin123";
 function login(){
- if(pass.value===adminPass){
+ if(pass.value==="admin123"){
    loginPanel.style.display="none";
    adminPanel.style.display="block";
    loadShops();
+ } else alert("Wrong Password");
+}
+
+/* SAVE SHOP */
+async function saveShop(){
+ try{
+  await db.collection("shops").add({
+    id:shopId.value,
+    name:shopNameInput.value,
+    phone:shopPhoneInput.value,
+    address:shopAddressInput.value
+  });
+  alert("Shop Saved ✅");
+  loadShops();
+ }catch(e){
+  alert("Error: "+e.message);
  }
 }
 
-/* SHOP */
-async function saveShop(){
- await db.collection("shops").add({
-   id:shopId.value,
-   name:shopNameInput.value,
-   phone:shopPhoneInput.value,
-   address:shopAddressInput.value
- });
- loadShops();
-}
-
+/* LOAD SHOPS */
 async function loadShops(){
- let snap = await db.collection("shops").get();
+ let snap=await db.collection("shops").get();
  let html="";
  for(let d of snap.docs){
    let s=d.data();
@@ -136,53 +130,61 @@ function openShop(id,name,phone,address){
  currentShop=id;
  adminPanel.style.display="none";
  clientPanel.style.display="block";
-
  shopName.innerText=name;
  shopPhone.innerText=phone;
  shopAddress.innerText=address;
-
  loadClients();
 }
 
 /* IMAGE UPLOAD */
-function uploadImage(file, callback){
- let fd=new FormData();
- fd.append("file",file);
- fd.append("upload_preset","unsigned_preset");
+function uploadImage(file){
+ return new Promise((resolve,reject)=>{
+  let fd=new FormData();
+  fd.append("file",file);
+  fd.append("upload_preset","unsigned_preset");
 
- fetch("https://api.cloudinary.com/v1_1/da1m4wmdb/image/upload",{method:"POST",body:fd})
- .then(r=>r.json())
- .then(d=>callback(d.secure_url));
+  fetch("https://api.cloudinary.com/v1_1/da1m4wmdb/image/upload",{method:"POST",body:fd})
+  .then(r=>r.json())
+  .then(d=>{
+    if(d.secure_url) resolve(d.secure_url);
+    else reject("Upload failed");
+  })
+  .catch(()=>reject("Upload error"));
+ });
 }
 
 /* SAVE CLIENT */
 async function saveClient(){
- let file=imageInput.files[0];
+ try{
+  let file=imageInput.files[0];
+  let imageUrl="";
 
- let obj={
-   shop:currentShop,
-   name:nameInput.value,
-   mobile:mobileInput.value,
-   serial:serialInput.value,
-   m1:m1.value,m2:m2.value,m3:m3.value,m4:m4.value,m5:m5.value
- };
+  if(file){
+    alert("Uploading Image...");
+    imageUrl = await uploadImage(file);
+  }
 
- function save(){
-   if(editId){
-     db.collection("clients").doc(editId).update(obj);
-     editId=null;
-   } else {
-     db.collection("clients").add(obj);
-   }
-   loadClients();
+  let obj={
+    shop:currentShop,
+    name:nameInput.value,
+    mobile:mobileInput.value,
+    serial:serialInput.value,
+    image:imageUrl
+  };
+
+  if(editId){
+    await db.collection("clients").doc(editId).update(obj);
+    editId=null;
+  } else {
+    await db.collection("clients").add(obj);
+  }
+
+  alert("Client Saved ✅");
+  loadClients();
+
+ }catch(e){
+  alert("Error: "+e);
  }
-
- if(file){
-   uploadImage(file,(url)=>{
-     obj.image=url;
-     save();
-   });
- } else save();
 }
 
 /* LOAD CLIENT */
@@ -206,7 +208,6 @@ async function loadClients(){
      <td>
        <button onclick='editClient(${JSON.stringify(r)})'>✏️</button>
        <button onclick="deleteClient('${r.id}')">🗑️</button>
-       <button onclick='downloadPDF(${JSON.stringify(r)})'>📄</button>
      </td>
    </tr>`;
  });
@@ -219,8 +220,6 @@ function editClient(r){
  nameInput.value=r.name;
  mobileInput.value=r.mobile;
  serialInput.value=r.serial;
- m1.value=r.m1||""; m2.value=r.m2||""; m3.value=r.m3||"";
- m4.value=r.m4||""; m5.value=r.m5||"";
  editId=r.id;
 }
 
@@ -237,32 +236,13 @@ searchInput.oninput=async function(){
 
  let html="";
  snap.forEach(d=>{
-   let r={...d.data(),id:d.id};
+   let r=d.data();
    if(r.name.toLowerCase().includes(v)||r.mobile.includes(v)||r.serial.includes(v)){
      html+=`<tr><td>${r.name}</td><td>${r.mobile}</td><td>${r.serial}</td></tr>`;
    }
  });
  clientTable.innerHTML=html;
 };
-
-/* PDF */
-function downloadPDF(r){
- let el=document.createElement("div");
-
- el.innerHTML=`
- <h2>${shopName.innerText}</h2>
- <p>${shopPhone.innerText}</p>
- <p>${shopAddress.innerText}</p>
- <hr>
- <h3>${r.name}</h3>
- <p>${r.mobile}</p>
- <p>${r.serial}</p>
- ${r.image?`<img src="${r.image}" style="max-width:100%;">`:""}
- <p>Length: ${r.m1} | Chest: ${r.m2} | Waist: ${r.m3}</p>
- `;
-
- html2pdf().from(el).save(r.name+"_"+r.serial+".pdf");
-}
 
 </script>
 
