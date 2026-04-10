@@ -2,34 +2,36 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Tailor Pro FINAL</title>
+<title>Tailor Pro Final Fix</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
-body{font-family:Arial;background:#0f172a;color:white;text-align:center;}
-input,button{padding:8px;margin:4px;border-radius:6px;border:none;}
+body{font-family:Arial;background:#0f172a;color:white;text-align:center;margin:0;}
+input,button{padding:10px;margin:5px;border-radius:6px;border:none;}
 button{background:#22c55e;color:white;cursor:pointer;}
 .table{width:100%;border-collapse:collapse;}
 td,th{padding:6px;border-bottom:1px solid #444;}
-#adminPanel,#clientPanel{display:none;}
+#adminPanel,#clientPanel,#clientForm{display:none;}
+input{width:95%;}
+#searchInput{font-size:18px;width:98%;}
 </style>
 </head>
 
 <body>
 
-<h2>Tailor Pro FINAL</h2>
-
 <div id="loginPanel">
+<h2>Admin Login</h2>
 <input id="pass" placeholder="Password">
 <button onclick="login()">Login</button>
 </div>
 
 <div id="adminPanel">
 <h3>Admin Panel</h3>
+
+<button onclick="changePassword()">Change Password</button><br>
 
 <input id="shopId" placeholder="Shop ID">
 <input id="shopNameInput" placeholder="Shop Name">
@@ -39,7 +41,9 @@ td,th{padding:6px;border-bottom:1px solid #444;}
 <button onclick="saveShop()">Save Shop</button>
 
 <table class="table">
-<thead><tr><th>ID</th><th>Name</th><th>Total</th><th>Open</th></tr></thead>
+<thead>
+<tr><th>ID</th><th>Name</th><th>Total</th><th>Action</th></tr>
+</thead>
 <tbody id="shopTable"></tbody>
 </table>
 </div>
@@ -51,19 +55,24 @@ td,th{padding:6px;border-bottom:1px solid #444;}
 <p id="shopAddress"></p>
 <h3 id="totalClients"></h3>
 
-<input id="searchInput" placeholder="Search..." style="width:95%;font-size:18px;">
+<button onclick="showForm()">➕ Add Client</button>
+<button onclick="importData()">📥 Import</button>
+<button onclick="exportData()">📤 Export</button>
 
-<br>
+<input id="searchInput" placeholder="Search...">
 
+<div id="clientForm">
 <input id="nameInput" placeholder="Name">
 <input id="mobileInput" placeholder="Mobile">
 <input id="serialInput" placeholder="Book No">
 <input type="file" id="imageInput">
-
-<button onclick="saveClient()">Save Client</button>
+<button onclick="saveClient()">Save</button>
+</div>
 
 <table class="table">
-<thead><tr><th>Name</th><th>Mobile</th><th>Book</th><th>Img</th><th>Action</th></tr></thead>
+<thead>
+<tr><th>Name</th><th>Phone</th><th>Book</th><th>Action</th></tr>
+</thead>
 <tbody id="clientTable"></tbody>
 </table>
 
@@ -71,180 +80,290 @@ td,th{padding:6px;border-bottom:1px solid #444;}
 
 <script>
 
-// FIREBASE
 firebase.initializeApp({
-  apiKey: "AIzaSyDbsDvPCUFBa39if7C3enHePG86fNSfEP4",
-  authDomain: "tailorapp-d1d19.firebaseapp.com",
-  projectId: "tailorapp-d1d19"
+ apiKey:"AIzaSyAoChlrCKNFO0JvJYnPAx7d8zAd9zXiJuI",
+ authDomain:"tailor-pro-new-9e723.firebaseapp.com",
+ projectId:"tailor-pro-new-9e723"
 });
-let db = firebase.firestore();
 
-// GLOBALS
+let db=firebase.firestore();
 let currentShop="";
-let editId=null;
+let editClientId=null;
+let adminPass="admin123";
 
 /* LOGIN */
 function login(){
- if(pass.value==="admin123"){
-   loginPanel.style.display="none";
-   adminPanel.style.display="block";
-   loadShops();
- } else alert("Wrong Password");
+ if(pass.value===adminPass){
+  loginPanel.style.display="none";
+  adminPanel.style.display="block";
+  loadShops();
+ }else alert("Wrong Password");
+}
+
+/* PASSWORD */
+function changePassword(){
+ let p=prompt("Enter New Password");
+ if(p){adminPass=p;alert("Updated");}
 }
 
 /* SAVE SHOP */
 async function saveShop(){
- try{
-  await db.collection("shops").add({
-    id:shopId.value,
-    name:shopNameInput.value,
-    phone:shopPhoneInput.value,
-    address:shopAddressInput.value
-  });
-  alert("Shop Saved ✅");
-  loadShops();
- }catch(e){
-  alert("Error: "+e.message);
+ let data={
+  id:shopId.value,
+  name:shopNameInput.value,
+  phone:shopPhoneInput.value,
+  address:shopAddressInput.value
+ };
+
+ if(window.editShopId){
+  await db.collection("shops").doc(window.editShopId).update(data);
+  window.editShopId=null;
+ }else{
+  await db.collection("shops").add(data);
  }
+
+ loadShops();
 }
 
 /* LOAD SHOPS */
 async function loadShops(){
  let snap=await db.collection("shops").get();
  let html="";
+
  for(let d of snap.docs){
-   let s=d.data();
-   let c=await db.collection("clients").where("shop","==",s.id).get();
-   html+=`<tr>
-     <td>${s.id}</td>
-     <td>${s.name}</td>
-     <td>${c.size}</td>
-     <td><button onclick="openShop('${s.id}','${s.name}','${s.phone}','${s.address}')">Open</button></td>
-   </tr>`;
+  let s=d.data();
+  let c=await db.collection("clients").where("shop","==",s.id).get();
+  let link=location.origin+location.pathname+"?shop="+s.id;
+
+  html+=`<tr>
+  <td>${s.id}</td>
+  <td>${s.name}</td>
+  <td>${c.size}</td>
+  <td>
+   <a href="${link}" target="_blank">Open</a>
+   <button onclick='editShop("${d.id}",${JSON.stringify(s)})'>✏️</button>
+   <button onclick='deleteShop("${d.id}")'>🗑️</button>
+  </td>
+  </tr>`;
  }
+
  shopTable.innerHTML=html;
 }
 
-/* OPEN SHOP */
-function openShop(id,name,phone,address){
- currentShop=id;
- adminPanel.style.display="none";
- clientPanel.style.display="block";
- shopName.innerText=name;
- shopPhone.innerText=phone;
- shopAddress.innerText=address;
- loadClients();
+/* EDIT SHOP */
+function editShop(id,s){
+ shopId.value=s.id;
+ shopNameInput.value=s.name;
+ shopPhoneInput.value=s.phone;
+ shopAddressInput.value=s.address;
+ window.editShopId=id;
 }
 
-/* IMAGE UPLOAD */
-function uploadImage(file){
- return new Promise((resolve,reject)=>{
-  let fd=new FormData();
-  fd.append("file",file);
-  fd.append("upload_preset","unsigned_preset");
+/* DELETE SHOP */
+async function deleteShop(id){
+ if(confirm("Delete shop?")){
+  await db.collection("shops").doc(id).delete();
+  loadShops();
+ }
+}
 
-  fetch("https://api.cloudinary.com/v1_1/da1m4wmdb/image/upload",{method:"POST",body:fd})
-  .then(r=>r.json())
-  .then(d=>{
-    if(d.secure_url) resolve(d.secure_url);
-    else reject("Upload failed");
-  })
-  .catch(()=>reject("Upload error"));
+/* OPEN SHOP */
+let p=new URLSearchParams(location.search);
+if(p.get("shop")){
+ loginPanel.style.display="none";
+ openShop(p.get("shop"));
+}
+
+async function openShop(id){
+ let snap=await db.collection("shops").where("id","==",id).get();
+ snap.forEach(d=>{
+  let s=d.data();
+  currentShop=s.id;
+  clientPanel.style.display="block";
+  shopName.innerText=s.name;
+  shopPhone.innerText=s.phone;
+  shopAddress.innerText=s.address;
+  loadClients();
  });
+}
+
+/* IMAGE */
+async function uploadImage(file){
+ let fd=new FormData();
+ fd.append("file",file);
+ fd.append("upload_preset","unsigned_preset");
+ let r=await fetch("https://api.cloudinary.com/v1_1/da1m4wmdb/image/upload",{method:"POST",body:fd});
+ let d=await r.json();
+ return d.secure_url;
 }
 
 /* SAVE CLIENT */
 async function saveClient(){
- try{
-  let file=imageInput.files[0];
-  let imageUrl="";
+ let img="";
+ if(imageInput.files[0]) img=await uploadImage(imageInput.files[0]);
 
-  if(file){
-    alert("Uploading Image...");
-    imageUrl = await uploadImage(file);
-  }
+ let obj={
+  shop:currentShop,
+  name:nameInput.value,
+  mobile:mobileInput.value,
+  serial:serialInput.value,
+  image:img
+ };
 
-  let obj={
-    shop:currentShop,
-    name:nameInput.value,
-    mobile:mobileInput.value,
-    serial:serialInput.value,
-    image:imageUrl
-  };
-
-  if(editId){
-    await db.collection("clients").doc(editId).update(obj);
-    editId=null;
-  } else {
-    await db.collection("clients").add(obj);
-  }
-
-  alert("Client Saved ✅");
-  loadClients();
-
- }catch(e){
-  alert("Error: "+e);
+ if(editClientId){
+  await db.collection("clients").doc(editClientId).update(obj);
+ }else{
+  await db.collection("clients").add(obj);
  }
+
+ clientForm.style.display="none";
+ loadClients();
 }
 
-/* LOAD CLIENT */
+/* LOAD CLIENTS */
 async function loadClients(){
  let snap=await db.collection("clients").where("shop","==",currentShop).get();
-
  let arr=[];
  snap.forEach(d=>arr.push({...d.data(),id:d.id}));
 
- totalClients.innerText="Total Clients: "+arr.length;
+ totalClients.innerText="Total: "+arr.length;
+ render(arr.slice(-10).reverse());
+}
 
- arr=arr.slice(-10).reverse();
-
+/* RENDER */
+function render(arr){
  let html="";
  arr.forEach(r=>{
-   html+=`<tr>
-     <td>${r.name}</td>
-     <td>${r.mobile}</td>
-     <td>${r.serial}</td>
-     <td>${r.image?`<img src="${r.image}" width="40">`:""}</td>
-     <td>
-       <button onclick='editClient(${JSON.stringify(r)})'>✏️</button>
-       <button onclick="deleteClient('${r.id}')">🗑️</button>
-     </td>
-   </tr>`;
+ html+=`<tr>
+ <td>${r.name}</td>
+ <td>${r.mobile}</td>
+ <td>${r.serial}</td>
+ <td>
+ <button onclick='editClient(${JSON.stringify(r)})'>✏️</button>
+ <button onclick='printSlip(${JSON.stringify(r)})'>🖨️</button>
+ </td>
+ </tr>`;
  });
-
  clientTable.innerHTML=html;
 }
 
-/* EDIT */
-function editClient(r){
- nameInput.value=r.name;
- mobileInput.value=r.mobile;
- serialInput.value=r.serial;
- editId=r.id;
-}
+/* PRINT */
+function printSlip(r){
+ let w = window.open("", "_blank");
 
-/* DELETE */
-async function deleteClient(id){
- await db.collection("clients").doc(id).delete();
- loadClients();
+ let html = `
+ <html>
+ <head>
+ <title>Print</title>
+ <style>
+ @page{size:A4;margin:0;}
+ body{margin:0;font-family:Arial;}
+ .box{
+  width:210mm;
+  height:297mm;
+  padding:10mm;
+  box-sizing:border-box;
+  text-align:center;
+ }
+ img{
+  width:100%;
+  height:140mm;
+  object-fit:contain;
+ }
+ </style>
+ </head>
+
+ <body>
+ <div class="box">
+ <h2>${shopName.innerText}</h2>
+ <p>${shopPhone.innerText}</p>
+ <p>${shopAddress.innerText}</p>
+ <hr>
+ <h3>${r.name}</h3>
+ <p>${r.mobile}</p>
+ <p>Book No: ${r.serial}</p>
+ ${r.image ? `<img src="${r.image}">` : ""}
+ </div>
+
+ <script>
+ window.onload = function(){
+   setTimeout(function(){
+     window.print();
+   }, 500);
+ }
+ <\/script>
+
+ </body>
+ </html>
+ `;
+
+ w.document.open();
+ w.document.write(html);
+ w.document.close();
 }
 
 /* SEARCH */
 searchInput.oninput=async function(){
  let v=this.value.toLowerCase();
  let snap=await db.collection("clients").where("shop","==",currentShop).get();
-
- let html="";
+ let arr=[];
  snap.forEach(d=>{
-   let r=d.data();
-   if(r.name.toLowerCase().includes(v)||r.mobile.includes(v)||r.serial.includes(v)){
-     html+=`<tr><td>${r.name}</td><td>${r.mobile}</td><td>${r.serial}</td></tr>`;
-   }
+  let r={...d.data(),id:d.id};
+  if(r.name.toLowerCase().includes(v)||r.mobile.includes(v)||r.serial.includes(v)){
+   arr.push(r);
+  }
  });
- clientTable.innerHTML=html;
+ render(arr);
 };
 
-</script>
+/* EDIT CLIENT */
+function editClient(r){
+ showForm();
+ nameInput.value=r.name;
+ mobileInput.value=r.mobile;
+ serialInput.value=r.serial;
+ editClientId=r.id;
+}
 
+function showForm(){
+ clientForm.style.display="block";
+}
+
+/* EXPORT */
+async function exportData(){
+ let snap=await db.collection("clients").where("shop","==",currentShop).get();
+ let data=[];
+ snap.forEach(d=>data.push(d.data()));
+
+ let blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+ let a=document.createElement("a");
+ a.href=URL.createObjectURL(blob);
+ a.download="clients.json";
+ a.click();
+}
+
+/* IMPORT */
+function importData(){
+ let input=document.createElement("input");
+ input.type="file";
+ input.accept="application/json";
+
+ input.onchange=async e=>{
+  let file=e.target.files[0];
+  let text=await file.text();
+  let data=JSON.parse(text);
+
+  for(let d of data){
+   await db.collection("clients").add({...d,shop:currentShop});
+  }
+
+  alert("Import Done ✅");
+  loadClients();
+ };
+
+ input.click();
+}
+
+</script>
 </body>
 </html>
