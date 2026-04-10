@@ -230,7 +230,7 @@ async function loadClients(){
  render(arr.slice(-10).reverse());
 }
 
-/* RENDER */
+/* RENDER (UPDATED BUTTONS) */
 function render(arr){
  let html="";
  arr.forEach(r=>{
@@ -241,6 +241,9 @@ function render(arr){
  <td>
  <button onclick='editClient(${JSON.stringify(r)})'>✏️</button>
  <button onclick='printSlip(${JSON.stringify(r)})'>🖨️</button>
+ <button onclick='callClient("${r.mobile}")'>📞</button>
+ <button onclick='whatsappClient("${r.mobile}")'>💬</button>
+ <button onclick='billClient(${JSON.stringify(r)})'>🧾</button>
  </td>
  </tr>`;
  });
@@ -250,55 +253,46 @@ function render(arr){
 /* PRINT */
 function printSlip(r){
  let w = window.open("", "_blank");
-
  let html = `
  <html>
- <head>
- <title>Print</title>
- <style>
- @page{size:A4;margin:0;}
- body{margin:0;font-family:Arial;}
- .box{
-  width:210mm;
-  height:297mm;
-  padding:10mm;
-  box-sizing:border-box;
-  text-align:center;
- }
- img{
-  width:100%;
-  height:140mm;
-  object-fit:contain;
- }
- </style>
- </head>
-
  <body>
- <div class="box">
  <h2>${shopName.innerText}</h2>
- <p>${shopPhone.innerText}</p>
- <p>${shopAddress.innerText}</p>
- <hr>
  <h3>${r.name}</h3>
  <p>${r.mobile}</p>
- <p>Book No: ${r.serial}</p>
- ${r.image ? `<img src="${r.image}">` : ""}
- </div>
-
- <script>
- window.onload = function(){
-   setTimeout(function(){
-     window.print();
-   }, 500);
- }
- <\/script>
-
+ <p>${r.serial}</p>
+ ${r.image ? `<img src="${r.image}" style="width:100%">` : ""}
+ <script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script>
  </body>
- </html>
- `;
-
- w.document.open();
+ </html>`;
  w.document.write(html);
+ w.document.close();
+}
+
+/* CALL */
+function callClient(phone){
+ window.location.href="tel:"+phone;
+}
+
+/* WHATSAPP */
+function whatsappClient(phone){
+ let msg=encodeURIComponent("Hello from "+shopName.innerText);
+ window.open("https://wa.me/"+phone+"?text="+msg,"_blank");
+}
+
+/* BILL */
+function billClient(r){
+ let w=window.open("","_blank");
+ w.document.write(`
+ <html>
+ <body>
+ <h2>${shopName.innerText}</h2>
+ <h3>${r.name}</h3>
+ <p>${r.mobile}</p>
+ <p>Book: ${r.serial}</p>
+ <p>Amount: ______</p>
+ <script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script>
+ </body>
+ </html>`);
  w.document.close();
 }
 
@@ -334,8 +328,7 @@ async function exportData(){
  let snap=await db.collection("clients").where("shop","==",currentShop).get();
  let data=[];
  snap.forEach(d=>data.push(d.data()));
-
- let blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+ let blob=new Blob([JSON.stringify(data)],{type:"application/json"});
  let a=document.createElement("a");
  a.href=URL.createObjectURL(blob);
  a.download="clients.json";
@@ -347,20 +340,13 @@ function importData(){
  let input=document.createElement("input");
  input.type="file";
  input.accept="application/json";
-
  input.onchange=async e=>{
-  let file=e.target.files[0];
-  let text=await file.text();
-  let data=JSON.parse(text);
-
+  let data=JSON.parse(await e.target.files[0].text());
   for(let d of data){
    await db.collection("clients").add({...d,shop:currentShop});
   }
-
-  alert("Import Done ✅");
   loadClients();
  };
-
  input.click();
 }
 
