@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Tailor Pro Final Stable</title>
+<title>Tailor Pro Stable</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -21,7 +21,6 @@ input{width:95%;}
 .wa{background:#25D366;}
 .print{background:#22c55e;}
 .edit{background:#facc15;color:black;}
-.bill{background:#a855f7;}
 </style>
 </head>
 
@@ -96,7 +95,7 @@ function login(){
   loginPanel.style.display="none";
   adminPanel.style.display="block";
   loadShops();
- }
+ }else alert("Wrong Password");
 }
 
 /* SHOP */
@@ -157,7 +156,10 @@ async function deleteShop(id){
 
 /* OPEN SHOP */
 let p=new URLSearchParams(location.search);
-if(p.get("shop")){loginPanel.style.display="none";openShop(p.get("shop"));}
+if(p.get("shop")){
+ loginPanel.style.display="none";
+ openShop(p.get("shop"));
+}
 
 async function openShop(id){
  let snap=await db.collection("shops").where("id","==",id).get();
@@ -228,6 +230,8 @@ async function saveClient(){
 
  selectedImages=[];
  imagePreview.innerHTML="";
+ editClientId=null;
+
  clientForm.style.display="none";
  loadClients();
 }
@@ -242,15 +246,22 @@ async function loadClients(){
  render(allClients);
 }
 
-/* SEARCH FIX */
+/* SEARCH (FINAL FIX) */
 searchInput.oninput=function(){
- let v=this.value.toLowerCase();
+ let v=this.value.toLowerCase().trim();
 
- let filtered=allClients.filter(r=>
-  r.name.toLowerCase().includes(v) ||
-  r.mobile.includes(v) ||
-  r.serial.includes(v)
- );
+ if(!v){
+   render(allClients);
+   return;
+ }
+
+ let filtered=allClients.filter(r=>{
+  return (
+   (r.name||"").toLowerCase().includes(v) ||
+   (r.mobile||"").includes(v) ||
+   (r.serial||"").toLowerCase().includes(v)
+  );
+ });
 
  render(filtered);
 };
@@ -260,9 +271,9 @@ function render(arr){
  let html="";
  arr.forEach(r=>{
  html+=`<tr>
- <td>${r.name}</td>
- <td>${r.mobile}</td>
- <td>${r.serial}</td>
+ <td>${r.name||""}</td>
+ <td>${r.mobile||""}</td>
+ <td>${r.serial||""}</td>
  <td>
  <button class="btn edit" onclick='editClient(${JSON.stringify(r)})'>✏️</button>
  <button class="btn print" onclick='printSlip(${JSON.stringify(r)})'>🖨️</button>
@@ -274,9 +285,9 @@ function render(arr){
  clientTable.innerHTML=html;
 }
 
-/* PRINT FINAL FIX */
+/* PRINT */
 function printSlip(r){
- let w=window.open("","");
+ let w=window.open("");
  let imgs="";
  if(r.image){
   (Array.isArray(r.image)?r.image:[r.image]).forEach(i=>{
@@ -319,8 +330,7 @@ function whatsappClient(p){
 
 /* IMPORT EXPORT */
 async function exportData(){
- let data=allClients.map(x=>({...x}));
- let blob=new Blob([JSON.stringify(data)],{type:"application/json"});
+ let blob=new Blob([JSON.stringify(allClients)],{type:"application/json"});
  let a=document.createElement("a");
  a.href=URL.createObjectURL(blob);
  a.download="clients.json";
@@ -343,9 +353,9 @@ function importData(){
 /* EDIT */
 function editClient(r){
  showForm();
- nameInput.value=r.name;
- mobileInput.value=r.mobile;
- serialInput.value=r.serial;
+ nameInput.value=r.name||"";
+ mobileInput.value=r.mobile||"";
+ serialInput.value=r.serial||"";
  editClientId=r.id;
 }
 
