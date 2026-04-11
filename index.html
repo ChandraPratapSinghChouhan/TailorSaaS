@@ -253,21 +253,101 @@ function render(arr){
 /* PRINT */
 function printSlip(r){
  let w = window.open("", "_blank");
+
+ let images = "";
+ if(r.image){
+   // support single or multiple
+   let imgs = Array.isArray(r.image) ? r.image : [r.image];
+   imgs.forEach(i=>{
+     images += `<img src="${i}">`;
+   });
+ }
+
  let html = `
  <html>
+ <head>
+ <title>Print</title>
+ <style>
+ @page{
+  size:A4;
+  margin:0;
+ }
+ body{
+  margin:0;
+  font-family:Arial;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+ }
+ .page{
+  width:210mm;
+  height:297mm;
+  padding:15mm;
+  box-sizing:border-box;
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+ }
+
+ h1{margin:5px 0;font-size:28px;}
+ p{margin:4px 0;font-size:16px;}
+ h2{margin:10px 0;}
+
+ .images{
+  margin-top:10px;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:10px;
+ }
+
+ img{
+  max-width:45%;
+  max-height:120mm;
+  object-fit:contain;
+  border:1px solid #ccc;
+ }
+ </style>
+ </head>
+
  <body>
- <h2>${shopName.innerText}</h2>
- <h3>${r.name}</h3>
- <p>${r.mobile}</p>
- <p>${r.serial}</p>
- ${r.image ? `<img src="${r.image}" style="width:100%">` : ""}
- <script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script>
+
+ <div class="page">
+
+ <h1>${shopName.innerText}</h1>
+ <p>${shopPhone.innerText}</p>
+ <p>${shopAddress.innerText}</p>
+
+ <hr>
+
+ <h2>${r.name}</h2>
+ <p>Phone: ${r.mobile}</p>
+ <p>Book No: ${r.serial}</p>
+
+ <div class="images">
+ ${images}
+ </div>
+
+ </div>
+
+ <script>
+ window.onload = function(){
+   setTimeout(function(){
+     window.print();
+   }, 700);
+ }
+ <\/script>
+
  </body>
- </html>`;
+ </html>
+ `;
+
+ w.document.open();
  w.document.write(html);
  w.document.close();
 }
-
 /* CALL */
 function callClient(phone){
  window.location.href="tel:"+phone;
