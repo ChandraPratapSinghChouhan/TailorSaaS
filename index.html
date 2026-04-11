@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Tailor Pro Stable</title>
+<title>Tailor Pro Final</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -14,13 +14,15 @@ input,button{padding:10px;margin:5px;border-radius:6px;border:none;}
 button{cursor:pointer;}
 .table{width:100%;border-collapse:collapse;}
 td,th{padding:6px;border-bottom:1px solid #444;}
-#adminPanel,#clientPanel,#clientForm{display:none;}
+#adminPanel,#clientPanel,#clientForm,#billForm,#billHistoryPanel,#checkForm,#checkHistoryPanel,#imagePanel{display:none;}
 input{width:95%;}
-.btn{padding:6px 10px;margin:2px;border-radius:5px;color:white;}
-.call{background:#3b82f6;}
-.wa{background:#25D366;}
-.print{background:#22c55e;}
+.big{font-size:28px;font-weight:bold;}
+
 .edit{background:#facc15;color:black;}
+.image{background:#6b7280;}
+.green{background:#22c55e;}
+.bill{background:#3b82f6;}
+.check{background:#f97316;}
 </style>
 </head>
 
@@ -34,10 +36,15 @@ input{width:95%;}
 
 <div id="adminPanel">
 <h3>Admin Panel</h3>
+
+<input id="newPass" placeholder="Change Password">
+<button onclick="changePass()">Update Password</button><br>
+
 <input id="shopId" placeholder="Shop ID">
 <input id="shopNameInput" placeholder="Shop Name">
 <input id="shopPhoneInput" placeholder="Phone">
 <input id="shopAddressInput" placeholder="Address">
+
 <button onclick="saveShop()">Save Shop</button>
 
 <table class="table">
@@ -47,32 +54,59 @@ input{width:95%;}
 </div>
 
 <div id="clientPanel">
-<h2 id="shopName"></h2>
-<p id="shopPhone"></p>
-<p id="shopAddress"></p>
-<h3 id="totalClients"></h3>
 
-<button onclick="showForm()">➕ Add Client</button>
-<button onclick="importData()">📥 Import</button>
-<button onclick="exportData()">📤 Export</button>
+<div class="big" id="shopName"></div>
+<div id="shopPhone"></div>
+<div id="shopAddress"></div>
+<div id="totalClients"></div>
+
+<button onclick="showForm()">Add Client</button>
+<button onclick="importData()">Import</button>
+<button onclick="exportData()">Export</button>
 
 <input id="searchInput" placeholder="Search...">
 
 <div id="clientForm">
 <input id="nameInput" placeholder="Name">
-<input id="mobileInput" placeholder="Mobile">
+<input id="mobileInput" placeholder="Phone">
 <input id="serialInput" placeholder="Book No">
-
 <input type="file" id="imageInput" multiple>
 <div id="imagePreview"></div>
-
 <button onclick="saveClient()">Save</button>
+</div>
+
+<div id="imagePanel"><h3>Images</h3><div id="imageList"></div></div>
+
+<div id="billForm">
+<h3>Create Bill</h3>
+<input id="item1" placeholder="Item">
+<input id="qty1" placeholder="Qty">
+<input id="price1" placeholder="Price">
+<input id="advance" placeholder="Advance">
+<button onclick="saveBill()">Save Bill</button>
+</div>
+
+<div id="billHistoryPanel">
+<h3>Bill History</h3>
+<table class="table"><tbody id="billHistoryTable"></tbody></table>
+</div>
+
+<div id="checkForm">
+<h3>Create Check</h3>
+<input id="checkCount" placeholder="Number">
+<button onclick="saveCheck()">Print Check</button>
+</div>
+
+<div id="checkHistoryPanel">
+<h3>Check History</h3>
+<table class="table"><tbody id="checkHistoryTable"></tbody></table>
 </div>
 
 <table class="table">
 <thead><tr><th>Name</th><th>Phone</th><th>Book</th><th>Action</th></tr></thead>
 <tbody id="clientTable"></tbody>
 </table>
+
 </div>
 
 <script>
@@ -82,12 +116,13 @@ firebase.initializeApp({
  authDomain:"tailor-pro-new-9e723.firebaseapp.com",
  projectId:"tailor-pro-new-9e723"
 });
-
 let db=firebase.firestore();
+
+let adminPass="admin123";
 let currentShop="";
 let editClientId=null;
-let adminPass="admin123";
 let allClients=[];
+let currentClient=null;
 
 /* LOGIN */
 function login(){
@@ -98,22 +133,13 @@ function login(){
  }else alert("Wrong Password");
 }
 
+function changePass(){adminPass=newPass.value;alert("Password Updated");}
+
 /* SHOP */
 async function saveShop(){
- let data={
-  id:shopId.value,
-  name:shopNameInput.value,
-  phone:shopPhoneInput.value,
-  address:shopAddressInput.value
- };
-
- if(window.editShopId){
-  await db.collection("shops").doc(window.editShopId).update(data);
-  window.editShopId=null;
- }else{
-  await db.collection("shops").add(data);
- }
-
+ let data={id:shopId.value,name:shopNameInput.value,phone:shopPhoneInput.value,address:shopAddressInput.value};
+ if(window.editShopId){await db.collection("shops").doc(window.editShopId).update(data);window.editShopId=null;}
+ else{await db.collection("shops").add(data);}
  loadShops();
 }
 
@@ -124,42 +150,21 @@ async function loadShops(){
   let s=d.data();
   let c=await db.collection("clients").where("shop","==",s.id).get();
   let link=location.origin+location.pathname+"?shop="+s.id;
-
   html+=`<tr>
-  <td>${s.id}</td>
-  <td>${s.name}</td>
-  <td>${c.size}</td>
-  <td>
-   <a href="${link}" target="_blank">Open</a>
-   <button onclick='editShop("${d.id}",${JSON.stringify(s)})'>✏️</button>
-   <button onclick='deleteShop("${d.id}")'>🗑️</button>
-  </td>
-  </tr>`;
+  <td>${s.id}</td><td>${s.name}</td><td>${c.size}</td>
+  <td><a href="${link}" target="_blank">Open</a>
+  <button onclick='editShop("${d.id}",${JSON.stringify(s)})'>Edit</button>
+  <button onclick='deleteShop("${d.id}")'>Delete</button></td></tr>`;
  }
  shopTable.innerHTML=html;
 }
 
-function editShop(id,s){
- shopId.value=s.id;
- shopNameInput.value=s.name;
- shopPhoneInput.value=s.phone;
- shopAddressInput.value=s.address;
- window.editShopId=id;
-}
-
-async function deleteShop(id){
- if(confirm("Delete shop?")){
-  await db.collection("shops").doc(id).delete();
-  loadShops();
- }
-}
+function editShop(id,s){shopId.value=s.id;shopNameInput.value=s.name;shopPhoneInput.value=s.phone;shopAddressInput.value=s.address;window.editShopId=id;}
+async function deleteShop(id){if(confirm("Delete shop?")){await db.collection("shops").doc(id).delete();loadShops();}}
 
 /* OPEN SHOP */
 let p=new URLSearchParams(location.search);
-if(p.get("shop")){
- loginPanel.style.display="none";
- openShop(p.get("shop"));
-}
+if(p.get("shop")){loginPanel.style.display="none";openShop(p.get("shop"));}
 
 async function openShop(id){
  let snap=await db.collection("shops").where("id","==",id).get();
@@ -178,25 +183,14 @@ async function openShop(id){
 let selectedImages=[];
 imageInput.onchange=function(){
  selectedImages=[...this.files];
- renderPreview();
-};
-
-function renderPreview(){
  let html="";
  selectedImages.forEach((f,i)=>{
   let url=URL.createObjectURL(f);
-  html+=`<div style="display:inline-block;position:relative;">
-   <img src="${url}" width="70">
-   <button onclick="removeImage(${i})">×</button>
-  </div>`;
+  html+=`<div><img src="${url}" width="70"><button onclick="removeImage(${i})">Delete</button></div>`;
  });
  imagePreview.innerHTML=html;
-}
-
-function removeImage(i){
- selectedImages.splice(i,1);
- renderPreview();
-}
+};
+function removeImage(i){selectedImages.splice(i,1);imageInput.onchange();}
 
 async function uploadImage(file){
  let fd=new FormData();
@@ -207,159 +201,156 @@ async function uploadImage(file){
  return d.secure_url;
 }
 
-/* SAVE CLIENT */
+/* CLIENT */
 async function saveClient(){
  let urls=[];
- for(let f of selectedImages){
-  urls.push(await uploadImage(f));
- }
-
- let obj={
-  shop:currentShop,
-  name:nameInput.value,
-  mobile:mobileInput.value,
-  serial:serialInput.value,
-  image:urls
- };
-
- if(editClientId){
-  await db.collection("clients").doc(editClientId).update(obj);
- }else{
-  await db.collection("clients").add(obj);
- }
-
- selectedImages=[];
- imagePreview.innerHTML="";
- editClientId=null;
-
- clientForm.style.display="none";
- loadClients();
+ for(let f of selectedImages){urls.push(await uploadImage(f));}
+ let obj={shop:currentShop,name:nameInput.value,mobile:mobileInput.value,serial:serialInput.value,image:urls};
+ if(editClientId){await db.collection("clients").doc(editClientId).update(obj);}
+ else{await db.collection("clients").add(obj);}
+ selectedImages=[];imagePreview.innerHTML="";editClientId=null;clientForm.style.display="none";loadClients();
 }
 
-/* LOAD CLIENT */
 async function loadClients(){
  let snap=await db.collection("clients").where("shop","==",currentShop).get();
- allClients=[];
- snap.forEach(d=>allClients.push({...d.data(),id:d.id}));
-
+ allClients=[];snap.forEach(d=>allClients.push({...d.data(),id:d.id}));
  totalClients.innerText="Total: "+allClients.length;
- render(allClients);
+ render(allClients.slice(-10));
 }
 
-/* SEARCH (FINAL FIX) */
 searchInput.oninput=function(){
- let v=this.value.toLowerCase().trim();
-
- if(!v){
-   render(allClients);
-   return;
- }
-
- let filtered=allClients.filter(r=>{
-  return (
-   (r.name||"").toLowerCase().includes(v) ||
-   (r.mobile||"").includes(v) ||
-   (r.serial||"").toLowerCase().includes(v)
-  );
- });
-
- render(filtered);
+ let v=this.value.toLowerCase();
+ if(!v) return render(allClients.slice(-10));
+ let f=allClients.filter(r=>r.name.toLowerCase().includes(v)||r.mobile.includes(v)||r.serial.toLowerCase().includes(v));
+ render(f);
 };
 
-/* RENDER */
 function render(arr){
  let html="";
  arr.forEach(r=>{
  html+=`<tr>
- <td>${r.name||""}</td>
- <td>${r.mobile||""}</td>
- <td>${r.serial||""}</td>
+ <td>${r.name}</td><td>${r.mobile}</td><td>${r.serial}</td>
  <td>
- <button class="btn edit" onclick='editClient(${JSON.stringify(r)})'>✏️</button>
- <button class="btn print" onclick='printSlip(${JSON.stringify(r)})'>🖨️</button>
- <button class="btn call" onclick='callClient("${r.mobile}")'>📞</button>
- <button class="btn wa" onclick='whatsappClient("${r.mobile}")'>💬</button>
- </td>
- </tr>`;
+ <button class="edit" onclick='editClient(${JSON.stringify(r)})'>Edit</button>
+ <button class="image" onclick='showImages(${JSON.stringify(r)})'>Image</button>
+ <button class="green" onclick='callClient("${r.mobile}")'>Call</button>
+ <button class="green" onclick='whatsappClient("${r.mobile}")'>WhatsApp</button>
+ <button class="bill" onclick='openBill(${JSON.stringify(r)})'>Bill</button>
+ <button class="bill" onclick='billHistory(${JSON.stringify(r)})'>Bill History</button>
+ <button class="check" onclick='openCheck(${JSON.stringify(r)})'>Check</button>
+ <button class="check" onclick='checkHistory(${JSON.stringify(r)})'>Check History</button>
+ </td></tr>`;
  });
  clientTable.innerHTML=html;
 }
 
-/* PRINT */
-function printSlip(r){
+/* IMAGE PRINT */
+function showImages(r){
+ currentClient=r;
+ imagePanel.style.display="block";
+ let html="";
+ (r.image||[]).forEach(i=>{
+  html+=`<div><img src="${i}" width="100"><br>
+  <button onclick="printImage('${i}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Print</button></div>`;
+ });
+ imageList.innerHTML=html;
+}
+
+function printImage(img, client){
  let w=window.open("");
- let imgs="";
- if(r.image){
-  (Array.isArray(r.image)?r.image:[r.image]).forEach(i=>{
-   imgs+=`<img src="${i}" style="width:100%;margin-top:10px;">`;
-  });
- }
-
- w.document.write(`
- <html>
- <style>
- @page{size:A4;margin:0;}
- body{font-family:Arial;text-align:center;}
- .box{width:210mm;height:297mm;padding:15mm;box-sizing:border-box;}
- img{max-height:140mm;object-fit:contain;}
- </style>
- <body>
- <div class="box">
+ w.document.write(`<html><body style="text-align:center;font-family:Arial;">
  <h2>${shopName.innerText}</h2>
- <p>${shopPhone.innerText}</p>
- <p>${shopAddress.innerText}</p>
+ ${shopPhone.innerText}<br>${shopAddress.innerText}
  <hr>
- <h3>${r.name}</h3>
- <p>${r.mobile}</p>
- <p>${r.serial}</p>
- ${imgs}
- </div>
- <script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script>
- </body>
- </html>
- `);
- w.document.close();
+ <h3>${client.name}</h3>
+ ${client.mobile}<br>${client.serial}
+ <hr>
+ <img src="${img}" style="max-width:100%;">
+ <script>window.print()<\/script></body></html>`);
 }
 
-/* CALL + WA */
-function callClient(p){location.href="tel:"+p;}
-function whatsappClient(p){
- let msg=encodeURIComponent("Hello from "+shopName.innerText);
- window.open("https://wa.me/"+p+"?text="+msg);
+/* BILL */
+function openBill(r){currentClient=r;billForm.style.display="block";}
+
+async function saveBill(){
+ let total=(qty1.value*price1.value);
+ let adv=parseFloat(advance.value||0);
+ let rem=total-adv;
+
+ let bill={shop:currentShop,client:currentClient,total,adv,rem,time:new Date().toLocaleString()};
+ await db.collection("bills").add(bill);
+ printBill(bill);
+ billForm.style.display="none";
 }
 
-/* IMPORT EXPORT */
-async function exportData(){
- let blob=new Blob([JSON.stringify(allClients)],{type:"application/json"});
- let a=document.createElement("a");
- a.href=URL.createObjectURL(blob);
- a.download="clients.json";
- a.click();
+function printBill(b){
+ let w=window.open("");
+ w.document.write(`<html><body style="text-align:center;font-family:Arial;">
+ <h2>${shopName.innerText}</h2>
+ ${shopPhone.innerText}<br>${shopAddress.innerText}
+ <hr>
+ <h3>${b.client.name}</h3>
+ ${b.client.mobile}<br>${b.client.serial}
+ <hr>
+ ${b.time}
+ <hr>
+ Total: ${b.total}<br>
+ Advance: ${b.adv}<br>
+ Remaining: ${b.rem}
+ <h3>Thank You</h3>
+ <script>window.print()<\/script></body></html>`);
 }
 
-function importData(){
- let i=document.createElement("input");
- i.type="file";
- i.onchange=async e=>{
-  let data=JSON.parse(await e.target.files[0].text());
-  for(let d of data){
-   await db.collection("clients").add({...d,shop:currentShop});
-  }
-  loadClients();
- };
- i.click();
+async function billHistory(r){
+ let snap=await db.collection("bills").where("client.mobile","==",r.mobile).get();
+ let html="";
+ snap.forEach(d=>{
+  let b=d.data();
+  html+=`<tr><td>${b.total}</td><td>${b.time}</td>
+  <td><button onclick='printBill(${JSON.stringify(b)})'>Print</button></td></tr>`;
+ });
+ billHistoryTable.innerHTML=html;
+ billHistoryPanel.style.display="block";
 }
 
-/* EDIT */
+/* CHECK */
+function openCheck(r){currentClient=r;checkForm.style.display="block";}
+
+async function saveCheck(){
+ let total=parseInt(checkCount.value||0);
+ if(!total) return alert("Enter number");
+ let c={shop:currentShop,client:currentClient,total,time:new Date().toLocaleString()};
+ await db.collection("checks").add(c);
+ printCheck(c);
+ checkForm.style.display="none";
+}
+
+function printCheck(c){
+ let w=window.open("");
+ let slips="";
+ for(let i=1;i<=c.total;i++){
+  slips+=`<div style="border:1px dashed black;margin:10px;padding:10px;width:250px;display:inline-block;text-align:center;">
+  <b>${shopName.innerText}</b><br>
+  ${shopPhone.innerText}<br>${shopAddress.innerText}
+  <hr>
+  ${c.client.name}<br>${c.client.mobile}<br>${c.client.serial}
+  <hr>
+  <b>${i} of ${c.total}</b></div>`;
+ }
+ w.document.write(`<html><body>${slips}<script>window.print()<\/script></body></html>`);
+}
+
+/* OTHER */
 function editClient(r){
  showForm();
- nameInput.value=r.name||"";
- mobileInput.value=r.mobile||"";
- serialInput.value=r.serial||"";
+ nameInput.value=r.name;
+ mobileInput.value=r.mobile;
+ serialInput.value=r.serial;
  editClientId=r.id;
 }
-
 function showForm(){clientForm.style.display="block";}
+function callClient(p){location.href="tel:"+p;}
+function whatsappClient(p){window.open("https://wa.me/"+p);}
 
 </script>
 </body>
