@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Tailor Pro Final</title>
+<title>Tailor Pro Final Stable</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -88,6 +88,7 @@ let db=firebase.firestore();
 let currentShop="";
 let editClientId=null;
 let adminPass="admin123";
+let allClients=[];
 
 /* LOGIN */
 function login(){
@@ -171,9 +172,8 @@ async function openShop(id){
  });
 }
 
-/* IMAGE SYSTEM */
+/* IMAGE */
 let selectedImages=[];
-
 imageInput.onchange=function(){
  selectedImages=[...this.files];
  renderPreview();
@@ -196,7 +196,6 @@ function removeImage(i){
  renderPreview();
 }
 
-/* CLOUDINARY */
 async function uploadImage(file){
  let fd=new FormData();
  fd.append("file",file);
@@ -236,11 +235,25 @@ async function saveClient(){
 /* LOAD CLIENT */
 async function loadClients(){
  let snap=await db.collection("clients").where("shop","==",currentShop).get();
- let arr=[];
- snap.forEach(d=>arr.push({...d.data(),id:d.id}));
- totalClients.innerText="Total: "+arr.length;
- render(arr);
+ allClients=[];
+ snap.forEach(d=>allClients.push({...d.data(),id:d.id}));
+
+ totalClients.innerText="Total: "+allClients.length;
+ render(allClients);
 }
+
+/* SEARCH FIX */
+searchInput.oninput=function(){
+ let v=this.value.toLowerCase();
+
+ let filtered=allClients.filter(r=>
+  r.name.toLowerCase().includes(v) ||
+  r.mobile.includes(v) ||
+  r.serial.includes(v)
+ );
+
+ render(filtered);
+};
 
 /* RENDER */
 function render(arr){
@@ -261,94 +274,42 @@ function render(arr){
  clientTable.innerHTML=html;
 }
 
-/* PRINT */
+/* PRINT FINAL FIX */
 function printSlip(r){
- let w = window.open("", "_blank");
-
- let images = "";
+ let w=window.open("","");
+ let imgs="";
  if(r.image){
-   let imgs = Array.isArray(r.image) ? r.image : [r.image];
-   imgs.forEach(i=>{
-     images += `<img src="${i}">`;
-   });
+  (Array.isArray(r.image)?r.image:[r.image]).forEach(i=>{
+   imgs+=`<img src="${i}" style="width:100%;margin-top:10px;">`;
+  });
  }
 
- let html = `
+ w.document.write(`
  <html>
- <head>
- <title>Print</title>
  <style>
- @page{
-  size:A4;
-  margin:0;
- }
-
- body{
-  margin:0;
-  font-family:Arial;
- }
-
- .box{
-  width:210mm;
-  height:297mm;
-  padding:15mm;
-  box-sizing:border-box;
-  text-align:center;
- }
-
- h2{margin:5px 0;}
- p{margin:4px 0;font-size:16px;}
- hr{margin:10px 0;}
-
- .images{
-  margin-top:10px;
- }
-
- img{
-  width:100%;
-  max-height:140mm;
-  object-fit:contain;
-  margin-top:10px;
- }
+ @page{size:A4;margin:0;}
+ body{font-family:Arial;text-align:center;}
+ .box{width:210mm;height:297mm;padding:15mm;box-sizing:border-box;}
+ img{max-height:140mm;object-fit:contain;}
  </style>
- </head>
-
  <body>
-
  <div class="box">
-
  <h2>${shopName.innerText}</h2>
  <p>${shopPhone.innerText}</p>
  <p>${shopAddress.innerText}</p>
-
  <hr>
-
  <h3>${r.name}</h3>
  <p>${r.mobile}</p>
- <p>Book No: ${r.serial}</p>
-
- <div class="images">
- ${images}
+ <p>${r.serial}</p>
+ ${imgs}
  </div>
-
- </div>
-
- <script>
- window.onload = function(){
-   setTimeout(function(){
-     window.print();
-   }, 500);
- }
- <\/script>
-
+ <script>window.onload=()=>setTimeout(()=>window.print(),500)<\/script>
  </body>
  </html>
- `;
-
- w.document.open();
- w.document.write(html);
+ `);
  w.document.close();
 }
+
 /* CALL + WA */
 function callClient(p){location.href="tel:"+p;}
 function whatsappClient(p){
@@ -358,8 +319,7 @@ function whatsappClient(p){
 
 /* IMPORT EXPORT */
 async function exportData(){
- let snap=await db.collection("clients").where("shop","==",currentShop).get();
- let data=[]; snap.forEach(d=>data.push(d.data()));
+ let data=allClients.map(x=>({...x}));
  let blob=new Blob([JSON.stringify(data)],{type:"application/json"});
  let a=document.createElement("a");
  a.href=URL.createObjectURL(blob);
