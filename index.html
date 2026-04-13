@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Tailor Pro Final</title>
+<title>Tailor Pro Ultimate Final</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -14,9 +14,7 @@ input,button{padding:10px;margin:5px;border-radius:6px;border:none;}
 button{cursor:pointer;}
 .table{width:100%;border-collapse:collapse;}
 td,th{padding:6px;border-bottom:1px solid #444;}
-#adminPanel,#clientPanel,#clientForm,#billForm,#billHistoryPanel,#checkForm,#checkHistoryPanel,#imagePanel{display:none;}
-input{width:95%;}
-.big{font-size:28px;font-weight:bold;}
+.hidden{display:none;}
 
 .edit{background:#facc15;color:black;}
 .image{background:#6b7280;}
@@ -28,23 +26,24 @@ input{width:95%;}
 
 <body>
 
+<!-- LOGIN -->
 <div id="loginPanel">
 <h2>Admin Login</h2>
-<input id="pass" placeholder="Password">
+<input id="pass">
 <button onclick="login()">Login</button>
 </div>
 
-<div id="adminPanel">
+<!-- ADMIN -->
+<div id="adminPanel" class="hidden">
 <h3>Admin Panel</h3>
 
 <input id="newPass" placeholder="Change Password">
-<button onclick="changePass()">Update Password</button><br>
+<button onclick="changePass()">Update</button><br>
 
 <input id="shopId" placeholder="Shop ID">
 <input id="shopNameInput" placeholder="Shop Name">
 <input id="shopPhoneInput" placeholder="Phone">
 <input id="shopAddressInput" placeholder="Address">
-
 <button onclick="saveShop()">Save Shop</button>
 
 <table class="table">
@@ -53,20 +52,23 @@ input{width:95%;}
 </table>
 </div>
 
-<div id="clientPanel">
+<!-- CLIENT PANEL -->
+<div id="clientPanel" class="hidden">
 
-<div class="big" id="shopName"></div>
+<h2 id="shopName"></h2>
 <div id="shopPhone"></div>
 <div id="shopAddress"></div>
 <div id="totalClients"></div>
 
 <button onclick="showForm()">Add Client</button>
-<button onclick="importData()">Import</button>
 <button onclick="exportData()">Export</button>
+<button onclick="importData()">Import</button>
+<input type="file" id="importFile" style="display:none" onchange="readImport(event)">
 
-<input id="searchInput" placeholder="Search...">
+<input id="searchInput" placeholder="Search">
 
-<div id="clientForm">
+<!-- CLIENT FORM -->
+<div id="clientForm" class="hidden">
 <input id="nameInput" placeholder="Name">
 <input id="mobileInput" placeholder="Phone">
 <input id="serialInput" placeholder="Book No">
@@ -75,35 +77,39 @@ input{width:95%;}
 <button onclick="saveClient()">Save</button>
 </div>
 
-<div id="imagePanel"><h3>Images</h3><div id="imageList"></div></div>
+<!-- IMAGE PANEL -->
+<div id="imagePanel" class="hidden">
+<h3>Images</h3>
+<div id="imageList"></div>
+</div>
 
-<div id="billForm">
-<h3>Create Bill</h3>
-<input id="item1" placeholder="Item">
+<!-- BILL -->
+<div id="billForm" class="hidden">
 <input id="qty1" placeholder="Qty">
 <input id="price1" placeholder="Price">
 <input id="advance" placeholder="Advance">
 <button onclick="saveBill()">Save Bill</button>
 </div>
 
-<div id="billHistoryPanel">
-<h3>Bill History</h3>
+<div id="billHistoryPanel" class="hidden">
 <table class="table"><tbody id="billHistoryTable"></tbody></table>
 </div>
 
-<div id="checkForm">
-<h3>Create Check</h3>
+<!-- CHECK -->
+<div id="checkForm" class="hidden">
 <input id="checkCount" placeholder="Number">
 <button onclick="saveCheck()">Print Check</button>
 </div>
 
-<div id="checkHistoryPanel">
-<h3>Check History</h3>
+<div id="checkHistoryPanel" class="hidden">
 <table class="table"><tbody id="checkHistoryTable"></tbody></table>
 </div>
 
+<!-- CLIENT TABLE -->
 <table class="table">
-<thead><tr><th>Name</th><th>Phone</th><th>Book</th><th>Action</th></tr></thead>
+<thead>
+<tr><th>Name</th><th>Phone</th><th>Book</th><th>Action</th></tr>
+</thead>
 <tbody id="clientTable"></tbody>
 </table>
 
@@ -111,6 +117,7 @@ input{width:95%;}
 
 <script>
 
+/* FIREBASE CONFIG */
 firebase.initializeApp({
  apiKey:"AIzaSy...",
  authDomain:"tailor-pro-new-9e723.firebaseapp.com",
@@ -118,28 +125,27 @@ firebase.initializeApp({
 });
 let db=firebase.firestore();
 
+/* GLOBAL */
 let adminPass="admin123";
-let currentShop="";
-let editClientId=null;
-let allClients=[];
-let currentClient=null;
+let currentShop="", currentClient=null, editClientId=null, allClients=[];
 
 /* LOGIN */
 function login(){
  if(pass.value===adminPass){
   loginPanel.style.display="none";
-  adminPanel.style.display="block";
+  adminPanel.classList.remove("hidden");
   loadShops();
- }else alert("Wrong Password");
+ } else alert("Wrong Password");
 }
-
-function changePass(){adminPass=newPass.value;alert("Password Updated");}
+function changePass(){adminPass=newPass.value;}
 
 /* SHOP */
 async function saveShop(){
  let data={id:shopId.value,name:shopNameInput.value,phone:shopPhoneInput.value,address:shopAddressInput.value};
- if(window.editShopId){await db.collection("shops").doc(window.editShopId).update(data);window.editShopId=null;}
- else{await db.collection("shops").add(data);}
+ if(window.editShopId){
+  await db.collection("shops").doc(window.editShopId).update(data);
+  window.editShopId=null;
+ } else await db.collection("shops").add(data);
  loadShops();
 }
 
@@ -150,33 +156,71 @@ async function loadShops(){
   let s=d.data();
   let c=await db.collection("clients").where("shop","==",s.id).get();
   let link=location.origin+location.pathname+"?shop="+s.id;
+
   html+=`<tr>
-  <td>${s.id}</td><td>${s.name}</td><td>${c.size}</td>
-  <td><a href="${link}" target="_blank">Open</a>
+  <td>${s.id}</td>
+  <td>${s.name}</td>
+  <td>${c.size}</td>
+  <td>
+  <a href="${link}" target="_blank">Open</a>
   <button onclick='editShop("${d.id}",${JSON.stringify(s)})'>Edit</button>
-  <button onclick='deleteShop("${d.id}")'>Delete</button></td></tr>`;
+  <button onclick='deleteShop("${d.id}")'>Delete</button>
+  </td></tr>`;
  }
  shopTable.innerHTML=html;
 }
 
-function editShop(id,s){shopId.value=s.id;shopNameInput.value=s.name;shopPhoneInput.value=s.phone;shopAddressInput.value=s.address;window.editShopId=id;}
-async function deleteShop(id){if(confirm("Delete shop?")){await db.collection("shops").doc(id).delete();loadShops();}}
+function editShop(id,s){
+ shopId.value=s.id;
+ shopNameInput.value=s.name;
+ shopPhoneInput.value=s.phone;
+ shopAddressInput.value=s.address;
+ window.editShopId=id;
+}
+
+async function deleteShop(id){
+ if(confirm("Delete shop?")){
+  await db.collection("shops").doc(id).delete();
+  loadShops();
+ }
+}
 
 /* OPEN SHOP */
 let p=new URLSearchParams(location.search);
-if(p.get("shop")){loginPanel.style.display="none";openShop(p.get("shop"));}
+if(p.get("shop")){
+ loginPanel.style.display="none";
+ openShop(p.get("shop"));
+}
 
 async function openShop(id){
  let snap=await db.collection("shops").where("id","==",id).get();
  snap.forEach(d=>{
   let s=d.data();
   currentShop=s.id;
-  clientPanel.style.display="block";
+  clientPanel.classList.remove("hidden");
   shopName.innerText=s.name;
   shopPhone.innerText=s.phone;
   shopAddress.innerText=s.address;
   loadClients();
  });
+}
+
+/* IMPORT EXPORT */
+function exportData(){
+ let blob=new Blob([JSON.stringify(allClients)],{type:"application/json"});
+ let a=document.createElement("a");
+ a.href=URL.createObjectURL(blob);
+ a.download="clients.json";
+ a.click();
+}
+
+function importData(){importFile.click();}
+
+async function readImport(e){
+ let text=await e.target.files[0].text();
+ let data=JSON.parse(text);
+ for(let c of data){await db.collection("clients").add(c);}
+ loadClients();
 }
 
 /* IMAGE */
@@ -186,34 +230,61 @@ imageInput.onchange=function(){
  let html="";
  selectedImages.forEach((f,i)=>{
   let url=URL.createObjectURL(f);
-  html+=`<div><img src="${url}" width="70"><button onclick="removeImage(${i})">Delete</button></div>`;
+  html+=`<div><img src="${url}" width="80"><button onclick="removeImage(${i})">Delete</button></div>`;
  });
  imagePreview.innerHTML=html;
 };
 function removeImage(i){selectedImages.splice(i,1);imageInput.onchange();}
 
-async function uploadImage(file){
- let fd=new FormData();
- fd.append("file",file);
- fd.append("upload_preset","unsigned_preset");
- let r=await fetch("https://api.cloudinary.com/v1_1/da1m4wmdb/image/upload",{method:"POST",body:fd});
- let d=await r.json();
- return d.secure_url;
+async function uploadImage(f){
+ let fd = new FormData();
+ fd.append("file", f);
+ fd.append("upload_preset", "unsigned_preset"); // ⚠️ apna preset
+
+ try{
+   let r = await fetch("https://api.cloudinary.com/v1_1/da1m4wmdb/image/upload", {
+     method: "POST",
+     body: fd
+   });
+
+   let d = await r.json();
+
+   if(d.secure_url){
+     return d.secure_url;
+   } else {
+     alert("Image upload failed");
+     return null;
+   }
+
+ }catch(e){
+   alert("Upload error");
+   return null;
+ }
 }
 
 /* CLIENT */
 async function saveClient(){
  let urls=[];
- for(let f of selectedImages){urls.push(await uploadImage(f));}
+ for(let f of selectedImages){
+ let url = await uploadImage(f);
+ if(url) urls.push(url);
+}
+
  let obj={shop:currentShop,name:nameInput.value,mobile:mobileInput.value,serial:serialInput.value,image:urls};
- if(editClientId){await db.collection("clients").doc(editClientId).update(obj);}
- else{await db.collection("clients").add(obj);}
- selectedImages=[];imagePreview.innerHTML="";editClientId=null;clientForm.style.display="none";loadClients();
+
+ if(editClientId) await db.collection("clients").doc(editClientId).update(obj);
+ else await db.collection("clients").add(obj);
+
+ selectedImages=[];imagePreview.innerHTML="";
+ editClientId=null;
+ clientForm.classList.add("hidden");
+ loadClients();
 }
 
 async function loadClients(){
  let snap=await db.collection("clients").where("shop","==",currentShop).get();
- allClients=[];snap.forEach(d=>allClients.push({...d.data(),id:d.id}));
+ allClients=[];
+ snap.forEach(d=>allClients.push({...d.data(),id:d.id}));
  totalClients.innerText="Total: "+allClients.length;
  render(allClients.slice(-10));
 }
@@ -221,8 +292,7 @@ async function loadClients(){
 searchInput.oninput=function(){
  let v=this.value.toLowerCase();
  if(!v) return render(allClients.slice(-10));
- let f=allClients.filter(r=>r.name.toLowerCase().includes(v)||r.mobile.includes(v)||r.serial.toLowerCase().includes(v));
- render(f);
+ render(allClients.filter(r=>r.name.toLowerCase().includes(v)||r.mobile.includes(v)||r.serial.toLowerCase().includes(v)));
 };
 
 function render(arr){
@@ -233,72 +303,94 @@ function render(arr){
  <td>
  <button class="edit" onclick='editClient(${JSON.stringify(r)})'>Edit</button>
  <button class="image" onclick='showImages(${JSON.stringify(r)})'>Image</button>
- <button class="green" onclick='callClient("${r.mobile}")'>Call</button>
- <button class="green" onclick='whatsappClient("${r.mobile}")'>WhatsApp</button>
  <button class="bill" onclick='openBill(${JSON.stringify(r)})'>Bill</button>
- <button class="bill" onclick='billHistory(${JSON.stringify(r)})'>Bill History</button>
+ <button class="bill" onclick='billHistory(${JSON.stringify(r)})'>History</button>
  <button class="check" onclick='openCheck(${JSON.stringify(r)})'>Check</button>
- <button class="check" onclick='checkHistory(${JSON.stringify(r)})'>Check History</button>
+ <button class="check" onclick='checkHistory(${JSON.stringify(r)})'>History</button>
  </td></tr>`;
  });
  clientTable.innerHTML=html;
 }
 
-/* IMAGE PRINT */
+/* IMAGE VIEW + PRINT (FINAL FIX) */
 function showImages(r){
  currentClient=r;
- imagePanel.style.display="block";
+ imagePanel.classList.remove("hidden");
  let html="";
- (r.image||[]).forEach(i=>{
-  html+=`<div><img src="${i}" width="100"><br>
-  <button onclick="printImage('${i}', ${JSON.stringify(r).replace(/"/g,'&quot;')})">Print</button></div>`;
+ (r.image||[]).forEach(img=>{
+  html+=`<div>
+  <img src="${img}" width="120"><br>
+  <button onclick='printImage("${img}",${JSON.stringify(r)})'>Print</button>
+  </div>`;
  });
  imageList.innerHTML=html;
 }
 
-function printImage(img, client){
+function printImage(img,c){
  let w=window.open("");
- w.document.write(`<html><body style="text-align:center;font-family:Arial;">
- <h2>${shopName.innerText}</h2>
- ${shopPhone.innerText}<br>${shopAddress.innerText}
+
+ w.document.write(`
+ <html>
+ <head>
+ <title>Print</title>
+ <style>
+ body{font-family:Arial;text-align:center;padding:20px;}
+ .shop{font-size:30px;font-weight:bold;}
+ .info{font-size:16px;}
+ .client{margin-top:15px;font-size:20px;font-weight:bold;}
+ img{margin-top:20px;max-width:100%;max-height:95vh;}
+ hr{margin:10px 0;}
+ </style>
+ </head>
+
+ <body>
+
+ <div class="shop">${shopName.innerText}</div>
+ <div class="info">${shopPhone.innerText}</div>
+ <div class="info">${shopAddress.innerText}</div>
+
  <hr>
- <h3>${client.name}</h3>
- ${client.mobile}<br>${client.serial}
+
+ <div class="client">${c.name}</div>
+ <div class="info">${c.mobile}</div>
+ <div class="info">Book No: ${c.serial}</div>
+
  <hr>
- <img src="${img}" style="max-width:100%;">
- <script>window.print()<\/script></body></html>`);
+
+ <img src="${img}">
+
+ <script>
+ window.onload = function(){ window.print(); }
+ <\/script>
+
+ </body>
+ </html>
+ `);
+
+ w.document.close();
 }
 
 /* BILL */
-function openBill(r){currentClient=r;billForm.style.display="block";}
+function openBill(r){currentClient=r;billForm.classList.remove("hidden");}
 
 async function saveBill(){
- let total=(qty1.value*price1.value);
+ let total=qty1.value*price1.value;
  let adv=parseFloat(advance.value||0);
  let rem=total-adv;
-
- let bill={shop:currentShop,client:currentClient,total,adv,rem,time:new Date().toLocaleString()};
- await db.collection("bills").add(bill);
- printBill(bill);
- billForm.style.display="none";
+ let b={client:currentClient,total,adv,rem,time:new Date().toLocaleString()};
+ await db.collection("bills").add(b);
+ printBill(b);
 }
 
 function printBill(b){
  let w=window.open("");
- w.document.write(`<html><body style="text-align:center;font-family:Arial;">
+ w.document.write(`<html><body style="text-align:center">
  <h2>${shopName.innerText}</h2>
  ${shopPhone.innerText}<br>${shopAddress.innerText}
- <hr>
- <h3>${b.client.name}</h3>
- ${b.client.mobile}<br>${b.client.serial}
- <hr>
- ${b.time}
- <hr>
- Total: ${b.total}<br>
- Advance: ${b.adv}<br>
- Remaining: ${b.rem}
- <h3>Thank You</h3>
- <script>window.print()<\/script></body></html>`);
+ <hr>${b.client.name}<br>${b.client.mobile}<br>${b.client.serial}
+ <hr>Total:${b.total}<br>Advance:${b.adv}<br>Remain:${b.rem}
+ <script>window.print()<\/script>
+ </body></html>`);
 }
 
 async function billHistory(r){
@@ -310,34 +402,46 @@ async function billHistory(r){
   <td><button onclick='printBill(${JSON.stringify(b)})'>Print</button></td></tr>`;
  });
  billHistoryTable.innerHTML=html;
- billHistoryPanel.style.display="block";
+ billHistoryPanel.classList.remove("hidden");
 }
 
 /* CHECK */
-function openCheck(r){currentClient=r;checkForm.style.display="block";}
+function openCheck(r){currentClient=r;checkForm.classList.remove("hidden");}
 
 async function saveCheck(){
  let total=parseInt(checkCount.value||0);
- if(!total) return alert("Enter number");
- let c={shop:currentShop,client:currentClient,total,time:new Date().toLocaleString()};
+ let ownerCode="CHK"+Date.now();
+ let c={client:currentClient,total,ownerCode,time:new Date().toLocaleString()};
  await db.collection("checks").add(c);
  printCheck(c);
- checkForm.style.display="none";
 }
 
 function printCheck(c){
  let w=window.open("");
- let slips="";
+ let html="";
  for(let i=1;i<=c.total;i++){
-  slips+=`<div style="border:1px dashed black;margin:10px;padding:10px;width:250px;display:inline-block;text-align:center;">
-  <b>${shopName.innerText}</b><br>
-  ${shopPhone.innerText}<br>${shopAddress.innerText}
+  html+=`<div style="border:1px dashed black;margin:10px;padding:10px;width:250px;display:inline-block;text-align:center">
+  <b>${shopName.innerText}</b><br>${shopPhone.innerText}<br>${shopAddress.innerText}
+  <hr>${c.client.name}<br>${c.client.mobile}<br>${c.client.serial}
   <hr>
-  ${c.client.name}<br>${c.client.mobile}<br>${c.client.serial}
-  <hr>
-  <b>${i} of ${c.total}</b></div>`;
+  <div style="font-size:28px;font-weight:bold">${i} of ${c.total}</div>
+  <div style="font-size:12px">${c.ownerCode}</div>
+  </div>`;
  }
- w.document.write(`<html><body>${slips}<script>window.print()<\/script></body></html>`);
+ w.document.write(`<html><body>${html}<script>window.print()<\/script></body></html>`);
+}
+
+async function checkHistory(r){
+ let snap=await db.collection("checks").where("client.mobile","==",r.mobile).get();
+ let html="";let total=0;
+ snap.forEach(d=>{
+  let c=d.data();
+  total+=c.total;
+  html+=`<tr><td>${c.total}</td><td>${c.ownerCode}</td><td>${c.time}</td></tr>`;
+ });
+ html+=`<tr><td>Total</td><td colspan="2">${total}</td></tr>`;
+ checkHistoryTable.innerHTML=html;
+ checkHistoryPanel.classList.remove("hidden");
 }
 
 /* OTHER */
@@ -348,9 +452,7 @@ function editClient(r){
  serialInput.value=r.serial;
  editClientId=r.id;
 }
-function showForm(){clientForm.style.display="block";}
-function callClient(p){location.href="tel:"+p;}
-function whatsappClient(p){window.open("https://wa.me/"+p);}
+function showForm(){clientForm.classList.remove("hidden");}
 
 </script>
 </body>
