@@ -302,6 +302,8 @@ function render(arr){
  <td>${r.name}</td><td>${r.mobile}</td><td>${r.serial}</td>
  <td>
  <button class="edit" onclick='editClient(${JSON.stringify(r)})'>Edit</button>
+<button class="green" onclick='whatsappClient(${JSON.stringify(r)})'>WhatsApp</button>
+<button class="green" onclick='callClient("${r.mobile}")'>Call</button>
  <button class="image" onclick='showImages(${JSON.stringify(r)})'>Image</button>
  <button class="bill" onclick='openBill(${JSON.stringify(r)})'>Bill</button>
  <button class="bill" onclick='billHistory(${JSON.stringify(r)})'>History</button>
@@ -453,7 +455,15 @@ function editClient(r){
  editClientId=r.id;
 }
 function showForm(){clientForm.classList.remove("hidden");}
+function whatsappClient(r){
+ let msg = `Hello ${r.name}%0AShop: ${shopName.innerText}%0APhone: ${shopPhone.innerText}%0ABook No: ${r.serial}`;
+ let url = `https://wa.me/91${r.mobile}?text=${msg}`;
+ window.open(url, "_blank");
+}
 
+function callClient(number){
+ window.location.href = `tel:${number}`;
+}
 </script>
 </body>
 </html>
