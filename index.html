@@ -219,10 +219,22 @@ function importData(){importFile.click();}
 async function readImport(e){
  let text=await e.target.files[0].text();
  let data=JSON.parse(text);
- for(let c of data){await db.collection("clients").add(c);}
- loadClients();
+
+ for(let c of data){
+
+   c.shop = currentShop;
+
+   let duplicate = allClients.find(x =>
+      normalizePhone(x.mobile) === normalizePhone(c.mobile)
+   );
+
+   if(!duplicate){
+      await db.collection("clients").add(c);
+   }
 }
 
+loadClients();
+}
 /* IMAGE */
 let selectedImages=[];
 imageInput.onchange=function(){
@@ -262,25 +274,71 @@ async function uploadImage(f){
  }
 }
 
+function normalizePhone(phone){
+  phone = String(phone).replace(/\D/g,'');
+
+  if(phone.length === 8){
+    phone = '965' + phone;
+  }
+
+  return phone;
+}
 /* CLIENT */
 async function saveClient(){
+
+ if(!nameInput.value.trim()){
+   alert("Client Name Required");
+   return;
+ }
+
+ if(!mobileInput.value.trim()){
+   alert("Phone Number Required");
+   return;
+ }
+
+ if(!serialInput.value.trim()){
+   alert("Book Number Required");
+   return;
+ }
+
+ let newPhone = normalizePhone(mobileInput.value);
+
+ let duplicate = allClients.find(c =>
+   normalizePhone(c.mobile) === newPhone &&
+   c.id !== editClientId
+ );
+
+ if(duplicate){
+   alert("Phone Number Already Exists");
+   return;
+ }
+
  let urls=[];
+
  for(let f of selectedImages){
- let url = await uploadImage(f);
- if(url) urls.push(url);
-}
+   let url = await uploadImage(f);
+   if(url) urls.push(url);
+ }
 
- let obj={shop:currentShop,name:nameInput.value,mobile:mobileInput.value,serial:serialInput.value,image:urls};
+ let obj={
+   shop:currentShop,
+   name:nameInput.value,
+   mobile:mobileInput.value,
+   serial:serialInput.value,
+   image:urls
+ };
 
- if(editClientId) await db.collection("clients").doc(editClientId).update(obj);
- else await db.collection("clients").add(obj);
+ if(editClientId)
+   await db.collection("clients").doc(editClientId).update(obj);
+ else
+   await db.collection("clients").add(obj);
 
- selectedImages=[];imagePreview.innerHTML="";
+ selectedImages=[];
+ imagePreview.innerHTML="";
  editClientId=null;
  clientForm.classList.add("hidden");
  loadClients();
 }
-
 async function loadClients(){
  let snap=await db.collection("clients").where("shop","==",currentShop).get();
  allClients=[];
